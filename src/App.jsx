@@ -1,122 +1,84 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React, { useEffect, useState } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { Loader2, LogOut, PenTool, Search } from 'lucide-react';
+import ConsentForm from './ConsentForm';
+import ConsentSearch from './ConsentSearch';
+import Login from './Login';
+import { auth } from './firebase';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [user, setUser] = useState(undefined);
+  const [currentView, setCurrentView] = useState('form');
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return unsubscribe;
+  }, []);
+
+  const menuItems = [
+    { id: 'form', label: '承諾書 入力', icon: PenTool },
+    { id: 'search', label: '履歴を検索', icon: Search },
+  ];
+
+  if (user === undefined) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center text-gray-600">
+        <Loader2 className="animate-spin mr-3" size={32} />
+        ログイン状態を確認しています...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="flex min-h-screen bg-gray-100">
+      <nav className="w-20 md:w-64 bg-gray-900 p-3 md:p-6 text-white flex flex-col pt-10">
+        <div className="text-center mb-10 hidden md:block border-b border-gray-700 pb-6">
+          <h1 className="text-2xl font-bold text-white">にゅうた動物病院</h1>
+          <p className="text-sm text-gray-400 mt-1">承諾書システム</p>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+        <div className="space-y-4">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentView === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setCurrentView(item.id)}
+                className={`w-full flex flex-col md:flex-row items-center gap-3 md:gap-4 p-4 md:p-5 rounded-2xl text-lg md:text-xl font-bold transition-all
+                  ${isActive
+                    ? 'bg-blue-600 text-white shadow-lg scale-105'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}
+              >
+                <Icon size={isActive ? 28 : 24} />
+                <span className="text-xs md:text-xl md:font-semibold">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        <div className="mt-auto space-y-3">
+          <button
+            onClick={() => signOut(auth)}
+            className="w-full flex flex-col md:flex-row items-center gap-2 md:gap-3 p-3 md:p-4 rounded-2xl text-gray-400 hover:bg-gray-800 hover:text-white transition-all"
+          >
+            <LogOut size={20} />
+            <span className="text-xs md:text-base">ログアウト</span>
+          </button>
+          <div className="text-center text-xs text-gray-600">v1.0 vibe code</div>
+        </div>
+      </nav>
+
+      <main className="flex-1 overflow-y-auto">
+        {currentView === 'form' && <ConsentForm />}
+        {currentView === 'search' && <ConsentSearch onBackToForm={() => setCurrentView('form')} />}
+      </main>
+    </div>
+  );
 }
-
-export default App
