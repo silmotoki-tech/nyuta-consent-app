@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import SignatureCanvas from 'react-signature-canvas';
 import html2pdf from 'html2pdf.js';
-import { Save, Loader2, RotateCcw, ChevronLeft, Printer } from 'lucide-react';
+import { Loader2, RotateCcw, ChevronLeft } from 'lucide-react';
 import { db, storage } from './firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -14,17 +14,18 @@ import {
   isSignatureRequired,
 } from './formTypes';
 
-// 本文の文言は別フェーズで作り込むため、今はダミーのプレースホルダーを表示する。
-const PLACEHOLDER_BODY_TEXT =
-  '（仮の本文）本項目には正式な説明文言が入ります。現在はダミーテキストです。動作確認後、実際の文言に差し替えます。';
+const INK_COLOR = '#24333F';
+const CIRCLED_NUMBERS = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
 
-// ファイル名・Storageパス用のタイムスタンプ（例: 20260815-1432）を生成
+function circledNumber(index) {
+  return CIRCLED_NUMBERS[index] ?? `${index + 1}.`;
+}
+
 function formatTimestamp(date) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
 }
 
-// サイン画像のデコード完了を待つ。img.decode() が使えない環境では onload にフォールバックする。
 function decodeImage(dataUrl) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -32,9 +33,7 @@ function decodeImage(dataUrl) {
     img.onerror = () => reject(new Error('署名画像の読み込みに失敗しました。'));
     img.src = dataUrl;
     if (typeof img.decode === 'function') {
-      img.decode().then(() => resolve(img)).catch(() => {
-        // decode 失敗時は onload 側の解決を待つ
-      });
+      img.decode().then(() => resolve(img)).catch(() => {});
     }
   });
 }
@@ -42,16 +41,75 @@ function decodeImage(dataUrl) {
 const initialFormData = {
   ownerName: '',
   petName: '',
+  phone: '',
+  emergencyContact: '',
   date: new Date().toISOString().split('T')[0],
 };
+
+function SectionLabel({ number, children }) {
+  return (
+    <p className="text-[12px] text-nc-brown mb-2">
+      {number} {children}
+    </p>
+  );
+}
+
+function PendingNote() {
+  return <p className="text-[14px] text-nc-ink-soft leading-[1.9]">準備中です</p>;
+}
+
+function BlockList({ blocks, startIndex = 0 }) {
+  if (!blocks || blocks.length === 0) {
+    return <PendingNote />;
+  }
+
+  return (
+    <div className="space-y-5">
+      {blocks.map((block, index) => {
+        const number = circledNumber(startIndex + index);
+        if (block.type === 'checklist') {
+          const items = Array.isArray(block.items) ? block.items.filter(Boolean) : [];
+          return (
+            <div key={`${block.type}-${index}`}>
+              {block.title && <SectionLabel number={number}>{block.title}</SectionLabel>}
+              {items.length === 0 ? (
+                <PendingNote />
+              ) : (
+                <ul className="space-y-1">
+                  {items.map((item, itemIndex) => (
+                    <li key={itemIndex} className="text-[14px] text-nc-ink leading-[1.9]">
+                      ・{item}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <div key={`${block.type}-${index}`}>
+            {block.title && <SectionLabel number={number}>{block.title}</SectionLabel>}
+            {block.body ? (
+              <p className="text-[14px] text-nc-ink leading-[1.9] whitespace-pre-wrap">{block.body}</p>
+            ) : (
+              <PendingNote />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function ConsentForm() {
   const sigCanvas = useRef({});
   const formRef = useRef(null);
 
-  const [step, setStep] = useState('select'); // 'select' | 'input'
+  const [step, setStep] = useState('select');
   const [selectedFormTypeId, setSelectedFormTypeId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveNotice, setSaveNotice] = useState('');
   const [capturedSignature, setCapturedSignature] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
 
@@ -60,9 +118,12 @@ export default function ConsentForm() {
   const attachedDocs = selectedFormType
     ? selectedFormType.attachmentIds.map(getAttachment).filter(Boolean)
     : [];
+  const mainBlockCount = selectedFormType?.blocks?.length || 1;
+  const signatureNumber = circledNumber(1 + mainBlockCount);
 
   const handleSelectFormType = (formTypeId) => {
     setSelectedFormTypeId(formTypeId);
+    setSaveNotice('');
     setStep('input');
   };
 
@@ -78,12 +139,10 @@ export default function ConsentForm() {
     sigCanvas.current.clear();
   };
 
-  // 保存成功後、生成したPDFを新規タブで開いて印刷ダイアログを呼ぶ
-  // （iPad Safari上でAirPrintを含むネイティブの印刷シートを出すため）
   const openPrintDialog = (pdfUrl) => {
     const printWindow = window.open(pdfUrl, '_blank');
     if (!printWindow) {
-      alert('印刷用のウィンドウを開けませんでした。ポップアップブロックの設定をご確認ください。');
+      setSaveNotice('保存しました。印刷用のウィンドウを開けませんでした。');
       return;
     }
     const tryPrint = () => {
@@ -94,34 +153,27 @@ export default function ConsentForm() {
       }
     };
     printWindow.addEventListener('load', tryPrint);
-    // PDFの読み込みでloadイベントが発火しないブラウザ向けのフォールバック
     setTimeout(tryPrint, 1500);
   };
 
-  // PDFを生成してFirebaseに保存する関数
   const handleGenerateAndSave = async () => {
     if (needsSignature && sigCanvas.current.isEmpty()) {
-      alert('飼い主様のサインをお願いします。');
+      setSaveNotice('飼い主様のサインをお願いします。');
       return;
     }
     if (!formData.ownerName || !formData.petName) {
-      alert('氏名とペットのお名前を入力してください。');
+      setSaveNotice('氏名とペットのお名前を入力してください。');
       return;
     }
 
     setIsSaving(true);
+    setSaveNotice('');
 
     try {
-      // サインをPNG画像として確定し、PDF化対象のDOMに<img>として反映させる。
-      // （サイン入力用canvasはPDF化時に data-html2canvas-ignore で除外されるため、
-      //   代わりにこの確定済み画像がPDFに含まれるようにする）
       if (needsSignature) {
         const dataUrl = sigCanvas.current.getTrimmedCanvas
           ? sigCanvas.current.getTrimmedCanvas().toDataURL('image/png')
           : sigCanvas.current.toDataURL('image/png');
-        // flushSync は <img> のDOM挿入までは同期化するが、画像デコード完了は保証しない。
-        // iPadの負荷状況で「PDF化した瞬間だけ署名が空白」になるのを防ぐため、
-        // デコード完了を待ってから state に反映し、その後 PDF 化する。
         await decodeImage(dataUrl);
         flushSync(() => setCapturedSignature(dataUrl));
       }
@@ -139,38 +191,31 @@ export default function ConsentForm() {
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       };
 
-      console.log('PDF生成開始...');
       const pdfBlob = await html2pdf().set(opt).from(formRef.current).output('blob');
-      console.log('PDF生成完了');
-
-      console.log('Storageへアップロード開始...');
       const storageRef = ref(storage, pdfPath);
       await uploadBytes(storageRef, pdfBlob);
       const downloadURL = await getDownloadURL(storageRef);
-      console.log('Storageアップロード完了。URL:', downloadURL);
 
-      console.log('Firestoreへ保存開始...');
       await addDoc(collection(db, 'consents'), {
         formTypeId: selectedFormType.id,
         category: selectedFormType.category,
         ownerName: formData.ownerName,
         petName: formData.petName,
+        phone: formData.phone,
+        emergencyContact: formData.emergencyContact,
         date: formData.date,
         yearMonth,
         pdfPath,
         pdfUrl: downloadURL,
         createdAt: serverTimestamp(),
       });
-      console.log('Firestore保存完了');
 
       openPrintDialog(downloadURL);
-
-      alert('保存が完了しました。印刷ダイアログを開きます。');
-
+      setSaveNotice('保存しました');
       handleBackToSelect();
     } catch (error) {
       console.error('保存エラーの詳細:', error);
-      alert(`保存に失敗しました。Firebaseの設定（ルール）を確認してください。\nエラー: ${error.message}`);
+      setSaveNotice(`保存に失敗しました。${error.message}`);
       setCapturedSignature(null);
     } finally {
       setIsSaving(false);
@@ -179,26 +224,31 @@ export default function ConsentForm() {
 
   if (step === 'select') {
     return (
-      <div className="min-h-screen bg-gray-100 p-4 md:p-8">
+      <div className="min-h-screen bg-nc-cream p-5 md:p-8">
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">承諾書の種類を選択してください</h1>
-          <div className="space-y-10">
+          <h1 className="text-[19px] font-medium text-nc-green mb-1">承諾書の種類を選択</h1>
+          <p className="text-[12px] text-nc-ink-soft mb-6">スタッフ向け。書類を選ぶと説明・サイン画面に進みます。</p>
+          {saveNotice && (
+            <p className="text-[13px] text-nc-ink mb-6">{saveNotice}</p>
+          )}
+          <div className="space-y-8">
             {categories.map((cat) => {
               const items = formTypes.filter((f) => f.category === cat.id);
               if (items.length === 0) return null;
+              const emphasize = cat.id === 'surgery_explanation';
               return (
                 <section key={cat.id}>
-                  <h2 className="text-lg md:text-xl font-bold text-gray-700 mb-4 border-b-2 border-gray-300 pb-2">
-                    {cat.label}
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <h2 className="text-[12px] text-nc-ink-soft mb-3">{cat.label}</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {items.map((item) => (
                       <button
                         key={item.id}
                         onClick={() => handleSelectFormType(item.id)}
-                        className="bg-white p-6 rounded-2xl shadow hover:shadow-lg hover:bg-blue-50 border border-gray-100 text-left transition-all"
+                        className={`p-4 rounded-[8px] text-left nc-hairline ${
+                          emphasize ? 'bg-nc-green-soft' : 'bg-nc-cream'
+                        }`}
                       >
-                        <span className="text-lg md:text-xl font-semibold text-gray-900">{item.label}</span>
+                        <span className="text-[15px] text-nc-ink">{item.label}</span>
                       </button>
                     ))}
                   </div>
@@ -212,128 +262,158 @@ export default function ConsentForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-8">
+    <div className="min-h-screen bg-nc-cream p-5 md:p-8">
       <div className="max-w-3xl mx-auto">
         <button
           onClick={handleBackToSelect}
           disabled={isSaving}
-          className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-medium mb-4"
+          className="flex items-center gap-1 text-[12px] text-nc-ink-soft mb-4"
           data-html2canvas-ignore
         >
-          <ChevronLeft size={20} />
+          <ChevronLeft size={14} />
           書類を選び直す
         </button>
 
-        <div className="bg-white p-6 md:p-10 shadow-lg rounded-xl" ref={formRef}>
-          <h1 className="text-2xl md:text-3xl font-bold text-center mb-8 border-b-2 border-gray-800 pb-4 text-gray-900">
+        <div className="bg-nc-cream p-5 md:p-8 rounded-[8px] nc-hairline" ref={formRef}>
+          <h1 className="text-[19px] font-medium text-nc-green mb-6 pb-3 border-b-[0.5px] border-nc-line">
             {selectedFormType.label}
           </h1>
 
-          <div className="space-y-6 mb-8 text-lg">
-            {/* 氏名・ペット名 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <section className="mb-7">
+            <SectionLabel number={circledNumber(0)}>飼い主・ペット</SectionLabel>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col">
-                <label className="font-semibold text-gray-700 mb-1">飼い主様 氏名</label>
+                <label className="text-[12px] text-nc-brown mb-1">飼い主様 氏名</label>
                 <input
                   type="text"
-                  className="border-2 border-gray-300 p-3 rounded-lg bg-gray-50 text-xl"
+                  className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
                   value={formData.ownerName}
                   onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
                   placeholder="動物 太郎"
                 />
               </div>
               <div className="flex flex-col">
-                <label className="font-semibold text-gray-700 mb-1">ペットのお名前 (カルテNo.)</label>
+                <label className="text-[12px] text-nc-brown mb-1">ペットのお名前 (カルテNo.)</label>
                 <input
                   type="text"
-                  className="border-2 border-gray-300 p-3 rounded-lg bg-gray-50 text-xl"
+                  className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
                   value={formData.petName}
                   onChange={(e) => setFormData({ ...formData, petName: e.target.value })}
                   placeholder="ポチ (12345)"
                 />
               </div>
+              <div className="flex flex-col">
+                <label className="text-[12px] text-nc-brown mb-1">電話番号</label>
+                <input
+                  type="tel"
+                  className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="090-0000-0000"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-[12px] text-nc-brown mb-1">緊急連絡先</label>
+                <input
+                  type="text"
+                  className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
+                  value={formData.emergencyContact}
+                  onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
+                  placeholder="090-0000-0000（続柄）"
+                />
+              </div>
             </div>
-
-            {/* 日付 */}
-            <div className="flex flex-col w-full md:w-1/2">
-              <label className="font-semibold text-gray-700 mb-1">日付</label>
+            <div className="flex flex-col w-full md:w-1/2 mt-4">
+              <label className="text-[12px] text-nc-brown mb-1">日付</label>
               <input
                 type="date"
-                className="border-2 border-gray-300 p-3 rounded-lg bg-gray-50 text-xl"
+                className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
                 value={formData.date}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               />
             </div>
-          </div>
+          </section>
 
-          {/* 本文エリア（仮テキスト） */}
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="leading-relaxed text-gray-800 text-base md:text-lg">{PLACEHOLDER_BODY_TEXT}</p>
-          </div>
+          <section className="mb-7">
+            {(!selectedFormType.blocks || selectedFormType.blocks.length === 0) ? (
+              <>
+                <SectionLabel number={circledNumber(1)}>説明内容</SectionLabel>
+                <PendingNote />
+              </>
+            ) : (
+              <BlockList blocks={selectedFormType.blocks} startIndex={1} />
+            )}
 
-          {/* 添付書類エリア（仮テキスト） */}
-          {attachedDocs.map((att) => (
-            <div key={att.id} className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <h3 className="font-bold text-gray-800 mb-2">{att.label}</h3>
-              <p className="leading-relaxed text-gray-800 text-base md:text-lg">{PLACEHOLDER_BODY_TEXT}</p>
-            </div>
-          ))}
+            {selectedFormType.importantPoint && (
+              <div className="p-3 rounded-[8px] bg-nc-mustard-bg border-[0.5px] border-nc-mustard mt-4">
+                <p className="text-[12px] text-nc-brown mb-1">ここが大事な点です</p>
+                <p className="text-[14px] text-nc-ink leading-[1.9] whitespace-pre-wrap">
+                  {selectedFormType.importantPoint}
+                </p>
+              </div>
+            )}
 
-          {/* サインエリア（予約案内カテゴリでは署名欄を省略） */}
+            {attachedDocs.map((att) => (
+              <div key={att.id} className="mt-6 pt-4 border-t-[0.5px] border-nc-line">
+                <h3 className="text-[12px] text-nc-brown mb-3">{att.label}</h3>
+                <BlockList blocks={att.blocks} startIndex={0} />
+              </div>
+            ))}
+          </section>
+
           {needsSignature && (
-            <div className="mb-10 relative border-2 border-gray-300 rounded-xl bg-white p-2">
-              <label className="absolute -top-3 left-4 bg-white px-2 text-sm font-semibold text-gray-600">
-                ご署名（iPadに直接サインしてください）
-              </label>
-
-              {capturedSignature ? (
-                // 確定済みの署名画像。PDF化の対象となるため data-html2canvas-ignore は付けない
-                <div className="w-full h-60 flex items-center justify-center">
-                  <img src={capturedSignature} alt="署名" className="max-h-56" />
-                </div>
-              ) : (
-                // サイン入力用キャンバス。PDF化の際はここだけ除外する
-                <div data-html2canvas-ignore>
-                  <SignatureCanvas
-                    ref={sigCanvas}
-                    penColor="black"
-                    canvasProps={{ className: 'w-full h-60 rounded-lg cursor-crosshair' }}
-                  />
-                  <button
-                    onClick={clearSignature}
-                    className="absolute bottom-3 right-3 flex items-center gap-1.5 text-sm text-red-600 bg-white px-3 py-1.5 rounded-full border border-red-200 shadow-sm hover:bg-red-50"
-                  >
-                    <RotateCcw size={16} />
-                    書き直す
-                  </button>
-                </div>
-              )}
-            </div>
+            <section className="mb-8">
+              <SectionLabel number={signatureNumber}>ご署名</SectionLabel>
+              <p className="text-[12px] text-nc-ink-soft mb-3">
+                上記の説明を確認したうえで、枠内にご署名ください。
+              </p>
+              <div className="relative rounded-[10px] border-[0.5px] border-nc-ink bg-nc-cream p-2">
+                {capturedSignature ? (
+                  <div className="nc-sig-guide w-full flex items-center justify-center">
+                    <img src={capturedSignature} alt="署名" className="max-h-52" />
+                  </div>
+                ) : (
+                  <div data-html2canvas-ignore>
+                    <div className="nc-sig-guide overflow-hidden">
+                      <SignatureCanvas
+                        ref={sigCanvas}
+                        penColor={INK_COLOR}
+                        canvasProps={{ className: 'w-full h-[220px] cursor-crosshair' }}
+                      />
+                    </div>
+                    <button
+                      onClick={clearSignature}
+                      className="absolute bottom-3 right-3 flex items-center gap-1 text-[12px] text-nc-ink-soft bg-nc-cream px-2 py-1 rounded-[8px] border-[0.5px] border-nc-line"
+                    >
+                      <RotateCcw size={12} />
+                      書き直す
+                    </button>
+                  </div>
+                )}
+              </div>
+            </section>
           )}
 
-          {/* アクションボタン（PDF化されるときは非表示にする設定） */}
-          <div className="mt-12 flex justify-center" data-html2canvas-ignore>
+          <div className="mt-8" data-html2canvas-ignore>
+            {saveNotice && (
+              <p className="text-[13px] text-nc-ink mb-3">{saveNotice}</p>
+            )}
             <button
               onClick={handleGenerateAndSave}
               disabled={isSaving}
-              className={`flex items-center gap-3 text-white px-10 py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all
-                ${isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-95'}`}
+              className={`w-full md:w-auto px-6 py-3 rounded-[8px] text-[15px]
+                ${isSaving ? 'bg-nc-line text-nc-ink-soft' : 'bg-nc-green text-nc-cream'}`}
             >
               {isSaving ? (
-                <>
-                  <Loader2 className="animate-spin" size={28} /> 保存中...
-                </>
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="animate-spin" size={16} /> 保存中...
+                </span>
               ) : (
-                <>
-                  <Save size={28} /> PDFを作成して保存・印刷
-                </>
+                '保存して印刷'
               )}
             </button>
+            <p className="text-[12px] text-nc-ink-soft mt-2">保存後、印刷ダイアログが開きます。</p>
           </div>
-          <p className="text-center text-sm text-gray-400 mt-3" data-html2canvas-ignore>
-            <Printer size={14} className="inline -mt-0.5 mr-1" />
-            保存後、自動的に印刷ダイアログが開きます
-          </p>
         </div>
       </div>
     </div>

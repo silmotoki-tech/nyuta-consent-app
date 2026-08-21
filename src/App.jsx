@@ -24,8 +24,8 @@ export default function App() {
 
   if (user === undefined) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center text-gray-600">
-        <Loader2 className="animate-spin mr-3" size={32} />
+      <div className="min-h-screen bg-nc-cream flex items-center justify-center text-nc-ink-soft text-sm">
+        <Loader2 className="animate-spin mr-2" size={18} />
         ログイン状態を確認しています...
       </div>
     );
@@ -36,14 +36,14 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <nav className="w-20 md:w-64 bg-gray-900 p-3 md:p-6 text-white flex flex-col pt-10">
-        <div className="text-center mb-10 hidden md:block border-b border-gray-700 pb-6">
-          <h1 className="text-2xl font-bold text-white">にゅうた動物病院</h1>
-          <p className="text-sm text-gray-400 mt-1">承諾書システム</p>
+    <div className="flex min-h-screen bg-nc-cream">
+      <nav className="w-20 md:w-56 bg-nc-cream p-3 md:p-5 flex flex-col pt-8 nc-hairline border-r-[0.5px] border-nc-line">
+        <div className="mb-8 hidden md:block pb-5 border-b-[0.5px] border-nc-line">
+          <h1 className="text-[19px] font-medium text-nc-green leading-snug">にゅうた動物病院</h1>
+          <p className="text-[12px] text-nc-ink-soft mt-1">承諾書システム</p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
@@ -51,13 +51,13 @@ export default function App() {
               <button
                 key={item.id}
                 onClick={() => setCurrentView(item.id)}
-                className={`w-full flex flex-col md:flex-row items-center gap-3 md:gap-4 p-4 md:p-5 rounded-2xl text-lg md:text-xl font-bold transition-all
+                className={`w-full flex flex-col md:flex-row items-center gap-2 md:gap-3 p-3 md:px-3 md:py-2.5 rounded-[8px] text-left
                   ${isActive
-                    ? 'bg-blue-600 text-white shadow-lg scale-105'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}
+                    ? 'bg-nc-green-soft text-nc-green'
+                    : 'text-nc-ink-soft'}`}
               >
-                <Icon size={isActive ? 28 : 24} />
-                <span className="text-xs md:text-xl md:font-semibold">{item.label}</span>
+                <Icon size={18} />
+                <span className="text-[11px] md:text-[14px]">{item.label}</span>
               </button>
             );
           })}
@@ -66,12 +66,11 @@ export default function App() {
         <div className="mt-auto space-y-3">
           <button
             onClick={() => signOut(auth)}
-            className="w-full flex flex-col md:flex-row items-center gap-2 md:gap-3 p-3 md:p-4 rounded-2xl text-gray-400 hover:bg-gray-800 hover:text-white transition-all"
+            className="w-full flex flex-col md:flex-row items-center gap-2 p-3 rounded-[8px] text-nc-ink-soft"
           >
-            <LogOut size={20} />
-            <span className="text-xs md:text-base">ログアウト</span>
+            <LogOut size={16} />
+            <span className="text-[11px] md:text-[13px]">ログアウト</span>
           </button>
-          <div className="text-center text-xs text-gray-600">v1.0 vibe code</div>
         </div>
       </nav>
 
