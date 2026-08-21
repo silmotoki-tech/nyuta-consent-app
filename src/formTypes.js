@@ -1,8 +1,8 @@
 // 書類の分類（category）の表示名・並び順を定義
 export const categories = [
-  { id: 'surgery_explanation', label: '手術・処置の説明同意書' },
   { id: 'hospitalization', label: '入院・お預かり' },
   { id: 'reservation', label: '予約案内' },
+  { id: 'surgery_explanation', label: '手術・処置の説明同意書' },
   { id: 'attachment', label: '添付書類（単独では使用しません）' },
 ];
 
@@ -97,7 +97,7 @@ export const formTypes = [
   }),
   defineForm({
     id: 'soft_palate_resection',
-    label: '軟口蓋切除',
+    label: '軟口蓋切除術',
     category: 'surgery_explanation',
     importantPoint: '術後の喉頭浮腫：術創の腫れが著しく、呼吸困難に陥る場合気道の確保と浮腫の改善のために一次気管切開手術が必要となる場合があります。',
     attachmentIds: ['anesthesia_complications'],
@@ -131,7 +131,7 @@ export const formTypes = [
   }),
   defineForm({
     id: 'cruciate_ligament',
-    label: '十字靭帯',
+    label: '十字靭帯断裂手術',
     category: 'surgery_explanation',
     importantPoint: '前十字靭帯断裂の整復後も変形性関節症の進行により疼痛が再発する場合があります。また、術後に整復した膝蓋関節の動揺が再発する場合も少なからずあります。',
     attachmentIds: ['anesthesia_complications'],
@@ -163,7 +163,7 @@ export const formTypes = [
   }),
   defineForm({
     id: 'patella_luxation',
-    label: '膝蓋骨脱臼',
+    label: '膝蓋骨脱臼整復術',
     category: 'surgery_explanation',
     importantPoint: '一般的に術後に再脱臼が起こる確率は10%前後との報告があります。',
     attachmentIds: ['anesthesia_complications'],
@@ -226,7 +226,7 @@ export const formTypes = [
   }),
   defineForm({
     id: 'boarding_notice',
-    label: 'お預かりにあたってのご注意',
+    label: 'ペットホテル承諾書',
     category: 'hospitalization',
     importantPoint: null,
     attachmentIds: [],
@@ -247,7 +247,7 @@ export const formTypes = [
   }),
   defineForm({
     id: 'hospitalization_general',
-    label: '承諾書（一般）',
+    label: '入院・預かり承諾書',
     category: 'hospitalization',
     importantPoint: '特異体質、天災、獣医師として通常要する注意義務の範囲を超えた不慮の事故による動物の損傷・死亡・逃亡などについては、直ちにお知らせしますが、損害賠償などの請求はお受けできません。',
     attachmentIds: [],
@@ -273,7 +273,7 @@ export const formTypes = [
   }),
   defineForm({
     id: 'examination_schedule',
-    label: '検査予定',
+    label: '検査注意事項',
     category: 'reservation',
     importantPoint: null,
     attachmentIds: [],
@@ -311,7 +311,7 @@ export const formTypes = [
   }),
   defineForm({
     id: 'surgery_schedule',
-    label: '手術予定',
+    label: '一般手術注意事項',
     category: 'reservation',
     importantPoint: null,
     attachmentIds: [],

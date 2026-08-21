@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import SignatureCanvas from 'react-signature-canvas';
 import html2pdf from 'html2pdf.js';
-import { Loader2, RotateCcw, ChevronLeft } from 'lucide-react';
+import { Activity, AlertCircle, Calendar, ChevronLeft, Home, Loader2, RotateCcw } from 'lucide-react';
 import { db, storage } from './firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -15,11 +15,12 @@ import {
 } from './formTypes';
 
 const INK_COLOR = '#24333F';
-const CIRCLED_NUMBERS = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
 
-function circledNumber(index) {
-  return CIRCLED_NUMBERS[index] ?? `${index + 1}.`;
-}
+const CATEGORY_ICONS = {
+  surgery_explanation: Activity,
+  hospitalization: Home,
+  reservation: Calendar,
+};
 
 function formatTimestamp(date) {
   const pad = (n) => String(n).padStart(2, '0');
@@ -46,11 +47,23 @@ const initialFormData = {
   date: new Date().toISOString().split('T')[0],
 };
 
-function SectionLabel({ number, children }) {
+function NumberBadge({ number }) {
   return (
-    <p className="text-[12px] text-nc-brown mb-2">
-      {number} {children}
-    </p>
+    <span className="mt-0.5 inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-nc-green-soft text-[12px] text-nc-green">
+      {number}
+    </span>
+  );
+}
+
+function SectionHeading({ number, title, children }) {
+  return (
+    <div className="flex gap-3">
+      <NumberBadge number={number} />
+      <div className="min-w-0 flex-1">
+        {title ? <p className="text-[12px] text-nc-brown mb-2">{title}</p> : null}
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -58,44 +71,45 @@ function PendingNote() {
   return <p className="text-[14px] text-nc-ink-soft leading-[1.9]">準備中です</p>;
 }
 
-function BlockList({ blocks, startIndex = 0 }) {
+function Checklist({ items }) {
+  return (
+    <ul className="space-y-2.5">
+      {items.map((item, itemIndex) => (
+        <li key={itemIndex} className="flex gap-2.5 text-[14px] text-nc-ink leading-[2]">
+          <span className="mt-[0.7em] h-[5px] w-[5px] shrink-0 rounded-full bg-nc-brown" />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function BlockList({ blocks, startIndex = 1 }) {
   if (!blocks || blocks.length === 0) {
     return <PendingNote />;
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       {blocks.map((block, index) => {
-        const number = circledNumber(startIndex + index);
+        const number = startIndex + index;
         if (block.type === 'checklist') {
           const items = Array.isArray(block.items) ? block.items.filter(Boolean) : [];
           return (
-            <div key={`${block.type}-${index}`}>
-              {block.title && <SectionLabel number={number}>{block.title}</SectionLabel>}
-              {items.length === 0 ? (
-                <PendingNote />
-              ) : (
-                <ul className="space-y-1">
-                  {items.map((item, itemIndex) => (
-                    <li key={itemIndex} className="text-[14px] text-nc-ink leading-[1.9]">
-                      ・{item}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <SectionHeading key={`${block.type}-${index}`} number={number} title={block.title}>
+              {items.length === 0 ? <PendingNote /> : <Checklist items={items} />}
+            </SectionHeading>
           );
         }
 
         return (
-          <div key={`${block.type}-${index}`}>
-            {block.title && <SectionLabel number={number}>{block.title}</SectionLabel>}
+          <SectionHeading key={`${block.type}-${index}`} number={number} title={block.title}>
             {block.body ? (
               <p className="text-[14px] text-nc-ink leading-[1.9] whitespace-pre-wrap">{block.body}</p>
             ) : (
               <PendingNote />
             )}
-          </div>
+          </SectionHeading>
         );
       })}
     </div>
@@ -119,7 +133,7 @@ export default function ConsentForm() {
     ? selectedFormType.attachmentIds.map(getAttachment).filter(Boolean)
     : [];
   const mainBlockCount = selectedFormType?.blocks?.length || 1;
-  const signatureNumber = circledNumber(1 + mainBlockCount);
+  const signatureNumber = 2 + mainBlockCount;
 
   const handleSelectFormType = (formTypeId) => {
     setSelectedFormTypeId(formTypeId);
@@ -236,18 +250,25 @@ export default function ConsentForm() {
               const items = formTypes.filter((f) => f.category === cat.id);
               if (items.length === 0) return null;
               const emphasize = cat.id === 'surgery_explanation';
+              const CategoryIcon = CATEGORY_ICONS[cat.id];
               return (
                 <section key={cat.id}>
-                  <h2 className="text-[12px] text-nc-ink-soft mb-3">{cat.label}</h2>
+                  <h2 className="flex items-center gap-1.5 text-[12px] text-nc-ink-soft mb-3">
+                    {CategoryIcon ? <CategoryIcon size={16} /> : null}
+                    {cat.label}
+                  </h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {items.map((item) => (
                       <button
                         key={item.id}
                         onClick={() => handleSelectFormType(item.id)}
-                        className={`p-4 rounded-[8px] text-left nc-hairline ${
+                        className={`p-5 rounded-[9px] text-left nc-hairline flex flex-col ${
                           emphasize ? 'bg-nc-green-soft' : 'bg-nc-cream'
                         }`}
                       >
+                        {CategoryIcon ? (
+                          <CategoryIcon size={18} className="text-nc-ink-soft mb-2.5" />
+                        ) : null}
                         <span className="text-[15px] text-nc-ink">{item.label}</span>
                       </button>
                     ))}
@@ -279,8 +300,8 @@ export default function ConsentForm() {
             {selectedFormType.label}
           </h1>
 
-          <section className="mb-7">
-            <SectionLabel number={circledNumber(0)}>飼い主・ペット</SectionLabel>
+          <section className="mb-8">
+            <SectionHeading number={1} title="飼い主・ペット">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col">
                 <label className="text-[12px] text-nc-brown mb-1">飼い主様 氏名</label>
@@ -332,21 +353,24 @@ export default function ConsentForm() {
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               />
             </div>
+            </SectionHeading>
           </section>
 
-          <section className="mb-7">
+          <section className="mb-8">
             {(!selectedFormType.blocks || selectedFormType.blocks.length === 0) ? (
-              <>
-                <SectionLabel number={circledNumber(1)}>説明内容</SectionLabel>
+              <SectionHeading number={2} title="説明内容">
                 <PendingNote />
-              </>
+              </SectionHeading>
             ) : (
-              <BlockList blocks={selectedFormType.blocks} startIndex={1} />
+              <BlockList blocks={selectedFormType.blocks} startIndex={2} />
             )}
 
             {selectedFormType.importantPoint && (
-              <div className="p-3 rounded-[8px] bg-nc-mustard-bg border-[0.5px] border-nc-mustard mt-4">
-                <p className="text-[12px] text-nc-brown mb-1">ここが大事な点です</p>
+              <div className="p-3 rounded-[8px] bg-nc-mustard-bg border-[0.5px] border-nc-mustard mt-8">
+                <p className="flex items-center gap-1.5 text-[12px] text-nc-brown mb-1">
+                  <AlertCircle size={16} className="text-nc-mustard shrink-0" />
+                  ここが大事な点です
+                </p>
                 <p className="text-[14px] text-nc-ink leading-[1.9] whitespace-pre-wrap">
                   {selectedFormType.importantPoint}
                 </p>
@@ -354,16 +378,16 @@ export default function ConsentForm() {
             )}
 
             {attachedDocs.map((att) => (
-              <div key={att.id} className="mt-6 pt-4 border-t-[0.5px] border-nc-line">
-                <h3 className="text-[12px] text-nc-brown mb-3">{att.label}</h3>
-                <BlockList blocks={att.blocks} startIndex={0} />
+              <div key={att.id} className="mt-8 pt-6 border-t-[0.5px] border-nc-line">
+                <h3 className="text-[12px] text-nc-brown mb-4">{att.label}</h3>
+                <BlockList blocks={att.blocks} startIndex={1} />
               </div>
             ))}
           </section>
 
           {needsSignature && (
             <section className="mb-8">
-              <SectionLabel number={signatureNumber}>ご署名</SectionLabel>
+              <SectionHeading number={signatureNumber} title="ご署名">
               <p className="text-[12px] text-nc-ink-soft mb-3">
                 上記の説明を確認したうえで、枠内にご署名ください。
               </p>
@@ -391,6 +415,7 @@ export default function ConsentForm() {
                   </div>
                 )}
               </div>
+              </SectionHeading>
             </section>
           )}
 
