@@ -400,8 +400,6 @@ export function getFormType(formTypeId) {
   return formTypes.find((f) => f.id === formTypeId);
 }
 
-// 予約注意事項（reservation）は同意書というより予約票のため、署名欄を省略する。
-// 麻酔（anesthesia）は手術説明と同様に署名必須。
-export function isSignatureRequired(categoryId) {
-  return categoryId !== 'reservation';
+export function isSignatureRequired() {
+  return true;
 }

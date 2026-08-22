@@ -129,7 +129,7 @@ export default function ConsentForm() {
   const [formData, setFormData] = useState(initialFormData);
 
   const selectedFormType = selectedFormTypeId ? getFormType(selectedFormTypeId) : null;
-  const needsSignature = selectedFormType ? isSignatureRequired(selectedFormType.category) : true;
+  const needsSignature = isSignatureRequired();
   const choiceField = selectedFormType?.choiceField || null;
   const choiceValue = choiceField ? formData[choiceField.id] || '' : '';
   const mainBlockCount = selectedFormType?.blocks?.length || 1;
