@@ -46,6 +46,9 @@ const initialFormData = {
   emergencyContact: '',
   date: new Date().toISOString().split('T')[0],
   resuscitationChoice: '',
+  examSelected: [],
+  examOther: '',
+  examOtherChecked: false,
 };
 
 function NumberBadge({ number }) {
@@ -85,7 +88,78 @@ function Checklist({ items }) {
   );
 }
 
-function BlockList({ blocks, startIndex = 1 }) {
+function CheckMark({ checked }) {
+  return (
+    <span
+      className={`mt-[0.35em] inline-flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[2px] border-[0.5px] border-nc-ink text-[11px] leading-none ${
+        checked ? 'bg-nc-ink text-nc-cream' : 'bg-transparent text-transparent'
+      }`}
+      aria-hidden="true"
+    >
+      ✓
+    </span>
+  );
+}
+
+function ExamSelect({ items, allowOther, selected, other, otherChecked, onToggle, onOtherChange, onOtherToggle }) {
+  const otherActive = otherChecked || Boolean(other.trim());
+  const otherLabel = other.trim() ? `その他：${other.trim()}` : 'その他';
+
+  return (
+    <ul className="space-y-2.5">
+      {items.map((item) => {
+        const checked = selected.includes(item);
+        return (
+          <li key={item}>
+            <label className="flex gap-2.5 text-[14px] text-nc-ink leading-[2]">
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={checked}
+                onChange={() => onToggle(item)}
+              />
+              <CheckMark checked={checked} />
+              <span>{item}</span>
+            </label>
+          </li>
+        );
+      })}
+      {allowOther && (
+        <li className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="flex gap-2.5 text-[14px] text-nc-ink leading-[2]">
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={otherActive}
+              onChange={onOtherToggle}
+            />
+            <CheckMark checked={otherActive} />
+            <span>{otherLabel}</span>
+          </label>
+          <input
+            type="text"
+            className="border-[0.5px] border-nc-line bg-nc-cream p-2 rounded-[8px] text-[15px] text-nc-ink flex-1 min-w-0"
+            value={other}
+            onChange={(e) => onOtherChange(e.target.value)}
+            placeholder="検査名を入力"
+            data-html2canvas-ignore
+          />
+        </li>
+      )}
+    </ul>
+  );
+}
+
+function BlockList({
+  blocks,
+  startIndex = 1,
+  examSelected = [],
+  examOther = '',
+  examOtherChecked = false,
+  onExamToggle,
+  onExamOtherChange,
+  onExamOtherToggle,
+}) {
   if (!blocks || blocks.length === 0) {
     return <PendingNote />;
   }
@@ -94,6 +168,24 @@ function BlockList({ blocks, startIndex = 1 }) {
     <div className="space-y-8">
       {blocks.map((block, index) => {
         const number = startIndex + index;
+        if (block.type === 'examSelect') {
+          const items = Array.isArray(block.items) ? block.items.filter(Boolean) : [];
+          return (
+            <SectionHeading key={`${block.type}-${index}`} number={number} title={block.title}>
+              <ExamSelect
+                items={items}
+                allowOther={Boolean(block.allowOther)}
+                selected={examSelected}
+                other={examOther}
+                otherChecked={examOtherChecked}
+                onToggle={onExamToggle}
+                onOtherChange={onExamOtherChange}
+                onOtherToggle={onExamOtherToggle}
+              />
+            </SectionHeading>
+          );
+        }
+
         if (block.type === 'checklist') {
           const items = Array.isArray(block.items) ? block.items.filter(Boolean) : [];
           return (
@@ -132,6 +224,7 @@ export default function ConsentForm() {
   const needsSignature = isSignatureRequired();
   const choiceField = selectedFormType?.choiceField || null;
   const choiceValue = choiceField ? formData[choiceField.id] || '' : '';
+  const hasExamSelect = Boolean(selectedFormType?.blocks?.some((block) => block.type === 'examSelect'));
   const mainBlockCount = selectedFormType?.blocks?.length || 1;
   const choiceNumber = 2 + mainBlockCount;
   const signatureNumber = choiceField ? choiceNumber + 1 : choiceNumber;
@@ -152,6 +245,29 @@ export default function ConsentForm() {
 
   const clearSignature = () => {
     sigCanvas.current.clear();
+  };
+
+  const handleExamToggle = (item) => {
+    const current = formData.examSelected || [];
+    const next = current.includes(item) ? current.filter((value) => value !== item) : [...current, item];
+    setFormData({ ...formData, examSelected: next });
+  };
+
+  const handleExamOtherChange = (value) => {
+    setFormData({
+      ...formData,
+      examOther: value,
+      examOtherChecked: Boolean(value.trim()) || formData.examOtherChecked,
+    });
+  };
+
+  const handleExamOtherToggle = () => {
+    const active = formData.examOtherChecked || Boolean(formData.examOther.trim());
+    if (active) {
+      setFormData({ ...formData, examOther: '', examOtherChecked: false });
+      return;
+    }
+    setFormData({ ...formData, examOtherChecked: true });
   };
 
   const openPrintDialog = (pdfUrl) => {
@@ -235,6 +351,14 @@ export default function ConsentForm() {
         pdfUrl: downloadURL,
         createdAt: serverTimestamp(),
         ...(choiceField ? { [choiceField.id]: choiceValue } : {}),
+        ...(hasExamSelect
+          ? {
+              examSelection: {
+                selected: formData.examSelected,
+                other: formData.examOther.trim(),
+              },
+            }
+          : {}),
       });
 
       openPrintDialog(downloadURL);
@@ -375,7 +499,16 @@ export default function ConsentForm() {
                 <PendingNote />
               </SectionHeading>
             ) : (
-              <BlockList blocks={selectedFormType.blocks} startIndex={2} />
+              <BlockList
+                blocks={selectedFormType.blocks}
+                startIndex={2}
+                examSelected={formData.examSelected}
+                examOther={formData.examOther}
+                examOtherChecked={formData.examOtherChecked}
+                onExamToggle={handleExamToggle}
+                onExamOtherChange={handleExamOtherChange}
+                onExamOtherToggle={handleExamOtherToggle}
+              />
             )}
 
             {selectedFormType.importantPoint && (

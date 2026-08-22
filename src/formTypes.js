@@ -285,19 +285,14 @@ export const formTypes = [
     importantPoint: null,
     blocks: [
       {
-        type: 'paragraph',
-        title: '来院にあたって',
-        body: '混雑や診察状況により当日お預かりに時間がかかることがあります。お時間に余裕をもってお越しください。',
-      },
-      {
-        type: 'checklist',
+        type: 'examSelect',
         title: '実施検査',
         items: [
           'レントゲン検査（胸部・腹部・その他）',
           '超音波検査（心臓・腹部・その他）',
           '血液検査（一般検査・ホルモン検査）',
-          'その他',
         ],
+        allowOther: true,
       },
       {
         type: 'checklist',
@@ -312,6 +307,11 @@ export const formTypes = [
           '超音波検査では毛刈りが必要になることがあります。',
           'お迎え時に結果をご説明しますが、遅い時間でのご来院の場合や緊急対応中の場合などでは、結果の説明を後日とさせていただくことがあります。',
         ],
+      },
+      {
+        type: 'paragraph',
+        title: '来院にあたって',
+        body: '混雑や診察状況により当日お預かりに時間がかかることがあります。お時間に余裕をもってお越しください。',
       },
     ],
   }),
