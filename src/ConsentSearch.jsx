@@ -3,6 +3,7 @@ import { db } from './firebase';
 import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { getFormType, getCategoryLabel } from './formTypes';
+import { displayOwnerName, displayPetName } from './displayNames';
 
 export default function ConsentSearch({ onBackToForm }) {
   const [consents, setConsents] = useState([]);
@@ -130,11 +131,16 @@ export default function ConsentSearch({ onBackToForm }) {
 
                   <div className="space-y-1.5 text-[13px] text-nc-ink mb-4">
                     <p>
-                      <span className="text-nc-ink-soft">飼い主</span> {consent.ownerName}
+                      <span className="text-nc-ink-soft">飼い主</span> {displayOwnerName(consent.ownerName)}
                     </p>
                     <p>
-                      <span className="text-nc-ink-soft">ペット</span> {consent.petName}
+                      <span className="text-nc-ink-soft">動物の名前</span> {displayPetName(consent.petName)}
                     </p>
+                    {consent.karteNumber ? (
+                      <p>
+                        <span className="text-nc-ink-soft">カルテ番号</span> {consent.karteNumber}
+                      </p>
+                    ) : null}
                     <p>
                       <span className="text-nc-ink-soft">日付</span> {consent.date}
                     </p>

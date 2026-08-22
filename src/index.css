@@ -73,3 +73,15 @@ select {
 .nc-pdf-export .bg-nc-cream {
   background-color: #fff !important;
 }
+
+.nc-pdf-only {
+  display: none;
+}
+
+.nc-pdf-export .nc-pdf-hide {
+  display: none !important;
+}
+
+.nc-pdf-export .nc-pdf-only {
+  display: block;
+}

@@ -12,6 +12,7 @@ import {
   getFormType,
   isSignatureRequired,
 } from './formTypes';
+import { displayOwnerName, displayPetName } from './displayNames';
 
 const INK_COLOR = '#24333F';
 
@@ -42,6 +43,7 @@ function decodeImage(dataUrl) {
 const initialFormData = {
   ownerName: '',
   petName: '',
+  karteNumber: '',
   phone: '',
   emergencyContact: '',
   date: new Date().toISOString().split('T')[0],
@@ -293,7 +295,7 @@ export default function ConsentForm() {
       return;
     }
     if (!formData.ownerName || !formData.petName) {
-      setSaveNotice('氏名とペットのお名前を入力してください。');
+      setSaveNotice('氏名と動物の名前を入力してください。');
       return;
     }
     if (choiceField && !choiceValue) {
@@ -343,6 +345,7 @@ export default function ConsentForm() {
         category: selectedFormType.category,
         ownerName: formData.ownerName,
         petName: formData.petName,
+        karteNumber: formData.karteNumber,
         phone: formData.phone,
         emergencyContact: formData.emergencyContact,
         date: formData.date,
@@ -438,26 +441,38 @@ export default function ConsentForm() {
           </h1>
 
           <section className="mb-8">
-            <SectionHeading number={1} title="飼い主・ペット">
+            <SectionHeading number={1}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col">
-                <label className="text-[12px] text-nc-brown mb-1">飼い主様 氏名</label>
+                <label className="text-[12px] text-nc-brown mb-1">飼い主氏名</label>
                 <input
                   type="text"
-                  className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
+                  className="nc-pdf-hide border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
                   value={formData.ownerName}
                   onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
                   placeholder="動物 太郎"
                 />
+                <p className="nc-pdf-only text-[15px] text-nc-ink">{displayOwnerName(formData.ownerName)}</p>
               </div>
               <div className="flex flex-col">
-                <label className="text-[12px] text-nc-brown mb-1">ペットのお名前 (カルテNo.)</label>
+                <label className="text-[12px] text-nc-brown mb-1">動物の名前</label>
+                <input
+                  type="text"
+                  className="nc-pdf-hide border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
+                  value={formData.petName}
+                  onChange={(e) => setFormData({ ...formData, petName: e.target.value })}
+                  placeholder="例：〇〇ちゃん"
+                />
+                <p className="nc-pdf-only text-[15px] text-nc-ink">{displayPetName(formData.petName)}</p>
+              </div>
+              <div className="flex flex-col">
+                <label className="text-[12px] text-nc-brown mb-1">カルテ番号</label>
                 <input
                   type="text"
                   className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
-                  value={formData.petName}
-                  onChange={(e) => setFormData({ ...formData, petName: e.target.value })}
-                  placeholder="ポチ (12345)"
+                  value={formData.karteNumber}
+                  onChange={(e) => setFormData({ ...formData, karteNumber: e.target.value })}
+                  placeholder="12345"
                 />
               </div>
               <div className="flex flex-col">
