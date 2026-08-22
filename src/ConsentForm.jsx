@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import SignatureCanvas from 'react-signature-canvas';
 import html2pdf from 'html2pdf.js';
-import { Activity, AlertCircle, Calendar, ChevronLeft, Home, Loader2, RotateCcw } from 'lucide-react';
+import { Activity, AlertCircle, Calendar, ChevronLeft, Home, Loader2, RotateCcw, Syringe } from 'lucide-react';
 import { db, storage } from './firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -16,9 +16,10 @@ import {
 const INK_COLOR = '#24333F';
 
 const CATEGORY_ICONS = {
-  surgery_explanation: Activity,
-  hospitalization: Home,
   reservation: Calendar,
+  hospitalization: Home,
+  anesthesia: Syringe,
+  surgery_explanation: Activity,
 };
 
 function formatTimestamp(date) {
