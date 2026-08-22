@@ -1,16 +1,40 @@
-# React + Vite
+# にゅうた動物病院 承諾書システム
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+院内の承諾書を iPad 上で入力・サイン・PDF 化し、印刷と Firebase への月別保存を行う業務アプリ。
 
-Currently, two official plugins are available:
+公開URL: https://silmotoki-tech.github.io/nyuta-consent-app/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 開発
 
-## React Compiler
+```bash
+npm install
+npm run dev        # 開発サーバー
+npm run build      # 本番ビルド
+npm run preview    # ビルド結果を本番同様に確認
+npm run lint       # oxlint
+npm run deploy     # ビルドして GitHub Pages に反映
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## E2E スモークテスト
 
-## Expanding the Oxlint configuration
+「書類を選択 → 入力 → サイン → 保存」を実ブラウザで通しで実行し、PDF 生成・
+Storage へのアップロード・Firestore への保存・印刷ダイアログの表示までを確認する。
+Firebase はモックに差し替えているので、本番データには書き込まない。
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```bash
+npx playwright install chromium   # 初回のみ
+npm run e2e                       # 全12書類をテスト
+npm run e2e -- 胆嚢摘出術          # 書類を指定
+```
+
+生成された PDF は `e2e/out/` に出力されるので、レイアウトを目視確認できる。
+
+## 依存パッケージの注意点
+
+`trim-canvas`（`react-signature-canvas` が署名のトリミングに使う）は、
+main が webpack UMD 形式の minified ファイルのため、Vite / Rollup の CJS interop で
+`default` が二重にラップされてしまう。その状態で `getTrimmedCanvas()` を呼ぶと
+`(0 , X.default) is not a function` になり、保存処理全体が失敗する。
+
+`vite.config.js` で素の ESM ソース（`trim-canvas/index.es6`）に直接エイリアスして回避している。
+このエイリアスを外すと同じ不具合が再発するので注意。

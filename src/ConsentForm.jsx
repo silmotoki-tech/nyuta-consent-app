@@ -27,6 +27,23 @@ function formatTimestamp(date) {
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
 }
 
+// サイン画像を PNG の dataURL にする。
+// トリミング（getTrimmedCanvas）はライブラリ側の依存の都合で失敗しうるため、
+// 失敗しても保存自体は止めず、トリミング無しの canvas にフォールバックする。
+function getSignatureDataUrl(pad) {
+  if (typeof pad.getTrimmedCanvas === 'function') {
+    try {
+      return pad.getTrimmedCanvas().toDataURL('image/png');
+    } catch (error) {
+      console.warn('サインのトリミングに失敗したため、未トリミングで保存します:', error);
+    }
+  }
+  if (typeof pad.getCanvas === 'function') {
+    return pad.getCanvas().toDataURL('image/png');
+  }
+  return pad.toDataURL('image/png');
+}
+
 function decodeImage(dataUrl) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -241,11 +258,13 @@ export default function ConsentForm() {
     setSelectedFormTypeId(null);
     setFormData(initialFormData);
     setCapturedSignature(null);
-    if (sigCanvas.current.clear) sigCanvas.current.clear();
+    // 署名を画像に差し替えた後は SignatureCanvas がアンマウントされ
+    // sigCanvas.current が null になるため、必ず null チェックする。
+    if (typeof sigCanvas.current?.clear === 'function') sigCanvas.current.clear();
   };
 
   const clearSignature = () => {
-    sigCanvas.current.clear();
+    if (typeof sigCanvas.current?.clear === 'function') sigCanvas.current.clear();
   };
 
   const handleExamToggle = (item) => {
@@ -271,12 +290,12 @@ export default function ConsentForm() {
     setFormData({ ...formData, examOtherChecked: true });
   };
 
+  // 印刷用ウィンドウを開けたら true を返す。
+  // iPad Safari ではポップアップがブロックされることがあるため、
+  // 呼び出し側で結果に応じたメッセージを出し分ける。
   const openPrintDialog = (pdfUrl) => {
     const printWindow = window.open(pdfUrl, '_blank');
-    if (!printWindow) {
-      setSaveNotice('保存しました。印刷用のウィンドウを開けませんでした。');
-      return;
-    }
+    if (!printWindow) return false;
     const tryPrint = () => {
       try {
         printWindow.print();
@@ -286,10 +305,14 @@ export default function ConsentForm() {
     };
     printWindow.addEventListener('load', tryPrint);
     setTimeout(tryPrint, 1500);
+    return true;
   };
 
   const handleGenerateAndSave = async () => {
-    if (needsSignature && sigCanvas.current.isEmpty()) {
+    const signaturePad = sigCanvas.current;
+    const hasSignature =
+      typeof signaturePad?.isEmpty === 'function' && !signaturePad.isEmpty();
+    if (needsSignature && !hasSignature) {
       setSaveNotice('飼い主様のサインをお願いします。');
       return;
     }
@@ -307,9 +330,7 @@ export default function ConsentForm() {
 
     try {
       if (needsSignature) {
-        const dataUrl = sigCanvas.current.getTrimmedCanvas
-          ? sigCanvas.current.getTrimmedCanvas().toDataURL('image/png')
-          : sigCanvas.current.toDataURL('image/png');
+        const dataUrl = getSignatureDataUrl(sigCanvas.current);
         await decodeImage(dataUrl);
         flushSync(() => setCapturedSignature(dataUrl));
       }
@@ -363,9 +384,13 @@ export default function ConsentForm() {
           : {}),
       });
 
-      openPrintDialog(downloadURL);
-      setSaveNotice('保存しました');
+      const printOpened = openPrintDialog(downloadURL);
       handleBackToSelect();
+      setSaveNotice(
+        printOpened
+          ? '保存しました'
+          : '保存しました。印刷用のウィンドウを開けませんでした（ポップアップを許可してください）。',
+      );
     } catch (error) {
       console.error('保存エラーの詳細:', error);
       setSaveNotice(`保存に失敗しました。${error.message}`);
