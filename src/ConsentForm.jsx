@@ -220,6 +220,7 @@ export default function ConsentForm() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState('');
   const [capturedSignature, setCapturedSignature] = useState(null);
+  const [isPdfExport, setIsPdfExport] = useState(false);
   const [formData, setFormData] = useState(initialFormData);
 
   const selectedFormType = selectedFormTypeId ? getFormType(selectedFormTypeId) : null;
@@ -329,12 +330,14 @@ export default function ConsentForm() {
       };
 
       const exportRoot = formRef.current;
+      flushSync(() => setIsPdfExport(true));
       exportRoot.classList.add('nc-pdf-export');
       let pdfBlob;
       try {
         pdfBlob = await html2pdf().set(opt).from(exportRoot).output('blob');
       } finally {
         exportRoot.classList.remove('nc-pdf-export');
+        flushSync(() => setIsPdfExport(false));
       }
       const storageRef = ref(storage, pdfPath);
       await uploadBytes(storageRef, pdfBlob);
@@ -445,25 +448,31 @@ export default function ConsentForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col">
                 <label className="text-[12px] text-nc-brown mb-1">飼い主氏名</label>
-                <input
-                  type="text"
-                  className="nc-pdf-hide border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
-                  value={formData.ownerName}
-                  onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
-                  placeholder="動物 太郎"
-                />
-                <p className="nc-pdf-only text-[15px] text-nc-ink">{displayOwnerName(formData.ownerName)}</p>
+                {isPdfExport ? (
+                  <p className="text-[15px] text-nc-ink py-2.5">{displayOwnerName(formData.ownerName)}</p>
+                ) : (
+                  <input
+                    type="text"
+                    className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
+                    value={formData.ownerName}
+                    onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                    placeholder="動物 太郎"
+                  />
+                )}
               </div>
               <div className="flex flex-col">
                 <label className="text-[12px] text-nc-brown mb-1">動物の名前</label>
-                <input
-                  type="text"
-                  className="nc-pdf-hide border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
-                  value={formData.petName}
-                  onChange={(e) => setFormData({ ...formData, petName: e.target.value })}
-                  placeholder="例：〇〇ちゃん"
-                />
-                <p className="nc-pdf-only text-[15px] text-nc-ink">{displayPetName(formData.petName)}</p>
+                {isPdfExport ? (
+                  <p className="text-[15px] text-nc-ink py-2.5">{displayPetName(formData.petName)}</p>
+                ) : (
+                  <input
+                    type="text"
+                    className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
+                    value={formData.petName}
+                    onChange={(e) => setFormData({ ...formData, petName: e.target.value })}
+                    placeholder="例：〇〇ちゃん"
+                  />
+                )}
               </div>
               <div className="flex flex-col">
                 <label className="text-[12px] text-nc-brown mb-1">カルテ番号</label>
