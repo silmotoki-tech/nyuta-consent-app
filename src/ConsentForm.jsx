@@ -10,7 +10,6 @@ import {
   categories,
   formTypes,
   getFormType,
-  getAttachment,
   isSignatureRequired,
 } from './formTypes';
 
@@ -45,6 +44,7 @@ const initialFormData = {
   phone: '',
   emergencyContact: '',
   date: new Date().toISOString().split('T')[0],
+  resuscitationChoice: '',
 };
 
 function NumberBadge({ number }) {
@@ -129,11 +129,11 @@ export default function ConsentForm() {
 
   const selectedFormType = selectedFormTypeId ? getFormType(selectedFormTypeId) : null;
   const needsSignature = selectedFormType ? isSignatureRequired(selectedFormType.category) : true;
-  const attachedDocs = selectedFormType
-    ? selectedFormType.attachmentIds.map(getAttachment).filter(Boolean)
-    : [];
+  const choiceField = selectedFormType?.choiceField || null;
+  const choiceValue = choiceField ? formData[choiceField.id] || '' : '';
   const mainBlockCount = selectedFormType?.blocks?.length || 1;
-  const signatureNumber = 2 + mainBlockCount;
+  const choiceNumber = 2 + mainBlockCount;
+  const signatureNumber = choiceField ? choiceNumber + 1 : choiceNumber;
 
   const handleSelectFormType = (formTypeId) => {
     setSelectedFormTypeId(formTypeId);
@@ -179,6 +179,10 @@ export default function ConsentForm() {
       setSaveNotice('氏名とペットのお名前を入力してください。');
       return;
     }
+    if (choiceField && !choiceValue) {
+      setSaveNotice(`${choiceField.prompt}を選択してください。`);
+      return;
+    }
 
     setIsSaving(true);
     setSaveNotice('');
@@ -222,6 +226,7 @@ export default function ConsentForm() {
         pdfPath,
         pdfUrl: downloadURL,
         createdAt: serverTimestamp(),
+        ...(choiceField ? { [choiceField.id]: choiceValue } : {}),
       });
 
       openPrintDialog(downloadURL);
@@ -376,18 +381,41 @@ export default function ConsentForm() {
                 </p>
               </div>
             )}
-
-            {attachedDocs.map((att) => (
-              <div key={att.id} className="mt-8 pt-6 border-t-[0.5px] border-nc-line">
-                <h3 className="text-[12px] text-nc-brown mb-4">{att.label}</h3>
-                <BlockList blocks={att.blocks} startIndex={1} />
-              </div>
-            ))}
           </section>
+
+          {choiceField && (
+            <section className="mb-8">
+              <SectionHeading number={choiceNumber} title={choiceField.prompt}>
+                {choiceField.description ? (
+                  <p className="text-[14px] text-nc-ink leading-[1.9] mb-3">{choiceField.description}</p>
+                ) : null}
+                <div className="space-y-2.5">
+                  {choiceField.options.map((option) => (
+                    <label key={option} className="flex items-start gap-2.5 text-[14px] text-nc-ink leading-[1.9]">
+                      <input
+                        type="radio"
+                        name={choiceField.id}
+                        value={option}
+                        checked={choiceValue === option}
+                        onChange={() => setFormData({ ...formData, [choiceField.id]: option })}
+                        className="mt-1.5 accent-nc-green"
+                      />
+                      <span>{option}</span>
+                    </label>
+                  ))}
+                </div>
+              </SectionHeading>
+            </section>
+          )}
 
           {needsSignature && (
             <section className="mb-8">
               <SectionHeading number={signatureNumber} title="ご署名">
+              {choiceValue ? (
+                <p className="text-[14px] text-nc-ink leading-[1.9] mb-3">
+                  {choiceField.prompt}：{choiceValue}
+                </p>
+              ) : null}
               <p className="text-[12px] text-nc-ink-soft mb-3">
                 上記の説明を確認したうえで、枠内にご署名ください。
               </p>

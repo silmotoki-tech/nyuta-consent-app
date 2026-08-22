@@ -3,43 +3,11 @@ export const categories = [
   { id: 'surgery_explanation', label: '手術・処置の説明同意書' },
   { id: 'hospitalization', label: '入院・お預かり' },
   { id: 'reservation', label: '予約案内' },
-  { id: 'attachment', label: '添付書類（単独では使用しません）' },
 ];
 
-function defineForm({ id, label, category, attachmentIds = [], blocks = [], importantPoint = null }) {
-  return { id, label, category, importantPoint, blocks, attachmentIds };
+function defineForm({ id, label, category, blocks = [], importantPoint = null, choiceField = null }) {
+  return { id, label, category, importantPoint, blocks, choiceField };
 }
-
-// 共通添付書類（単独では使わず、他の書類と組み合わせて使う）
-export const attachments = [
-  {
-    id: 'anesthesia_complications',
-    label: '麻酔および手術における合併症について',
-    importantPoint: null,
-    blocks: [
-      {
-        type: 'paragraph',
-        title: '',
-        body: '手術前後および麻酔中の動物の状態管理には最大限の注意を払いますが、動物の体調や基礎疾患あるいは体質などによっては、以下のような合併症を発症してしまうことがあります。',
-      },
-      {
-        type: 'checklist',
-        title: '',
-        items: [
-          '治癒遅延／癒合不全：基礎疾患や続発疾患、手術部位への感染などにより術創の癒合が遅延する、または癒合が起こらないことがあります。',
-          '消化器症状／膵炎：麻酔により胃腸機能が低下し、食欲不振や嘔吐、下痢などが見られることがあります。また、麻酔・手術中の血液循環の低下により膵炎を引き起こすことがあります。軽微なものから命に関わる重篤なものまで様々です。',
-          '麻酔薬へのアレルギー反応：麻酔薬に含まれる成分に対しアレルギー反応を引き起こすことがあります。アナフィラキシーショックのように危険な状況になるものから顔が腫れる、嘔吐するなど様々なパターンがあります。比較的まれな状況で、事前に予測することは一般的に困難です。重症例では死亡例も報告されています。アレルギー症状を過去に疑うことがありましたら事前にお伝え下さい。',
-          '腎不全：腎臓病の増悪、または高齢動物では元々の機能低下から麻酔・手術を引き金に発症することがあります。',
-          '播種性血管内凝固（DIC）：基礎疾患や重度の感染・炎症が引き金になり、全身の血管内で小さな血栓ができて血管が詰まったり、逆に血液が凝固せず出血が止まらなくなる病態です。',
-          '免疫介在性貧血／免疫介在性血小板減少症：上記同様に、基礎疾患や重度の感染・炎症が引き金になり、自身の免疫が赤血球や血小板を攻撃して壊してしまう病態です。',
-          'ショック（低血圧）：麻酔中の心肺機能の低下や出血による血液量減少により血圧が低下し、全身組織への酸素運搬に障害が出ている状態を指します。',
-          '不整脈・心停止：心疾患がある場合や深刻な疾病がある場合は麻酔中に心臓の拍動が不安定になり、不整脈が見られることがあります。特に心室細動や心停止は死に直結する危険な状況のため即座に救命処置が必要となります。これらは、ヒトでは高齢や大出血が生じた際に発生しやすくなるとされています。',
-          '肺水腫：基礎疾患として心臓病を持つ場合に、麻酔中の血液循環の低下や点滴による血中水分量の増加により、肺に水分が溜まり呼吸不全を起こした状態です。',
-        ],
-      },
-    ],
-  },
-];
 
 export const formTypes = [
   defineForm({
@@ -47,7 +15,6 @@ export const formTypes = [
     label: '胆嚢摘出術',
     category: 'surgery_explanation',
     importantPoint: '腹腔内出血や胆汁漏出の持続、術後の胆管閉塞や腸重積などの合併症が生じた場合には再開腹が必要になりますが、その場合の予後は悪いことが予想されます。',
-    attachmentIds: ['anesthesia_complications'],
     blocks: [
       {
         type: 'paragraph',
@@ -83,7 +50,6 @@ export const formTypes = [
     label: '軟口蓋切除術',
     category: 'surgery_explanation',
     importantPoint: '術後の喉頭浮腫：術創の腫れが著しく、呼吸困難に陥る場合気道の確保と浮腫の改善のために一次気管切開手術が必要となる場合があります。',
-    attachmentIds: ['anesthesia_complications'],
     blocks: [
       {
         type: 'paragraph',
@@ -117,7 +83,6 @@ export const formTypes = [
     label: '十字靭帯断裂手術',
     category: 'surgery_explanation',
     importantPoint: '前十字靭帯断裂の整復後も変形性関節症の進行により疼痛が再発する場合があります。また、術後に整復した膝蓋関節の動揺が再発する場合も少なからずあります。',
-    attachmentIds: ['anesthesia_complications'],
     blocks: [
       {
         type: 'paragraph',
@@ -149,7 +114,6 @@ export const formTypes = [
     label: '膝蓋骨脱臼整復術',
     category: 'surgery_explanation',
     importantPoint: '一般的に術後に再脱臼が起こる確率は10%前後との報告があります。',
-    attachmentIds: ['anesthesia_complications'],
     blocks: [
       {
         type: 'paragraph',
@@ -181,7 +145,6 @@ export const formTypes = [
     label: '抗がん剤副作用',
     category: 'surgery_explanation',
     importantPoint: '起こりうる副反応はこれだけに限定されず、命に関わる重篤な副反応が起こる可能性があることもご了承下さい。',
-    attachmentIds: [],
     blocks: [
       {
         type: 'paragraph',
@@ -212,7 +175,6 @@ export const formTypes = [
     label: '麻酔のおはなし',
     category: 'surgery_explanation',
     importantPoint: '若くて健康な子でも、生まれもった体質や、先天的な疾患により、このようなことが起こる可能性はゼロではないことをご了承ください。',
-    attachmentIds: [],
     blocks: [
       {
         type: 'paragraph',
@@ -227,11 +189,54 @@ export const formTypes = [
     ],
   }),
   defineForm({
+    id: 'anesthesia_complications',
+    label: '麻酔および手術における合併症について',
+    category: 'surgery_explanation',
+    importantPoint: '心臓や肺、肝臓、腎臓、脳など多数の重要臓器が障害され、生命維持に重大な障害が出ることがあります。',
+    choiceField: {
+      id: 'resuscitationChoice',
+      prompt: '蘇生処置について',
+      description: '万が一呼吸や、心臓が止まってしまった場合に、',
+      options: [
+        '心肺蘇生処置を希望します（追加費用が発生します）',
+        '心肺蘇生処置は希望しません',
+      ],
+    },
+    blocks: [
+      {
+        type: 'paragraph',
+        title: '',
+        body: '手術前後および麻酔中の動物の状態管理には最大限の注意を払いますが、動物の体調や基礎疾患あるいは体質などによっては、以下のような合併症を発症してしまうことがあります。',
+      },
+      {
+        type: 'checklist',
+        title: '',
+        items: [
+          '治癒遅延／癒合不全：基礎疾患や続発疾患、手術部位への感染などにより術創の癒合が遅延する、または癒合が起こらないことがあります。',
+          '消化器症状／膵炎：麻酔により胃腸機能が低下し、食欲不振や嘔吐、下痢などが見られることがあります。また、麻酔・手術中の血液循環の低下により膵炎を引き起こすことがあります。軽微なものから命に関わる重篤なものまで様々です。',
+          '麻酔薬へのアレルギー反応：麻酔薬に含まれる成分に対しアレルギー反応を引き起こすことがあります。アナフィラキシーショックのように危険な状況になるものから顔が腫れる、嘔吐するなど様々なパターンがあります。比較的まれな状況で、事前に予測することは一般的に困難です。重症例では死亡例も報告されています。アレルギー症状を過去に疑うことがありましたら事前にお伝え下さい。',
+          '腎不全：腎臓病の増悪、または高齢動物では元々の機能低下から麻酔・手術を引き金に発症することがあります。',
+          '播種性血管内凝固（DIC）：基礎疾患や重度の感染・炎症が引き金になり、全身の血管内で小さな血栓ができて血管が詰まったり、逆に血液が凝固せず出血が止まらなくなる病態です。',
+          '免疫介在性貧血／免疫介在性血小板減少症：上記同様に、基礎疾患や重度の感染・炎症が引き金になり、自身の免疫が赤血球や血小板を攻撃して壊してしまう病態です。',
+          'ショック（低血圧）：麻酔中の心肺機能の低下や出血による血液量減少により血圧が低下し、全身組織への酸素運搬に障害が出ている状態を指します。',
+          '不整脈・心停止：心疾患がある場合や深刻な疾病がある場合は麻酔中に心臓の拍動が不安定になり、不整脈が見られることがあります。特に心室細動や心停止は死に直結する危険な状況のため即座に救命処置が必要となります。これらは、ヒトでは高齢や大出血が生じた際に発生しやすくなるとされています。',
+          '肺水腫：基礎疾患として心臓病を持つ場合に、麻酔中の血液循環の低下や点滴による血中水分量の増加により、肺に水分が溜まり呼吸不全を起こした状態です。',
+          '脳神経症状（意識障害など）：動物では脳の状態を術前に詳しく調べることが難しいため、例えば大きな脳腫瘍があっても明らかな症状がなければ事前の検査で発見することが困難な場合があります。麻酔後に発作が出たり、大きな異常が無いにも関わらず麻酔から覚めない場合に頭蓋内疾患が存在することがあります。麻酔による脳圧亢進で頭蓋内疾患の悪化や脳神経への障害が起こり、術後に意識障害や麻痺などが生じることがあります。',
+          '多臓器不全：心臓や肺、肝臓、腎臓、脳など多数の重要臓器が障害され、生命維持に重大な障害が出ることがあります。',
+        ],
+      },
+      {
+        type: 'paragraph',
+        title: '',
+        body: '動物の治療においてすべてのことを完全に予測するのは困難で、起こりうる合併症は上記に限定されるものではありません。予測できない合併症が起こることがあります。\nそのため当院ではできうる限りの注意を払った上で、万が一の緊急事態にも備えて麻酔処置を行います。\n万が一これらの合併症が発生した場合には緊急で治療が必要になる可能性があります。治療方針に変更がある場合はご連絡致しますが、緊急の場合はご連絡なく治療を始めることもありますのでご了承下さい。\n\n手術に関してはご家族全員の意思を確認して、同意を得て下さい。\n\nスタッフは入念な手術準備を行い、万全の態勢で手術に臨み、可能な限り快復を早め、合併症が少なくなるように努めております。\n少しでも不安や疑問を感じられた際は遠慮なくご相談下さい。',
+      },
+    ],
+  }),
+  defineForm({
     id: 'hospitalization_general',
     label: '入院・預かり承諾書',
     category: 'hospitalization',
     importantPoint: '特異体質、天災、獣医師として通常要する注意義務の範囲を超えた不慮の事故による動物の損傷・死亡・逃亡などについては、直ちにお知らせしますが、損害賠償などの請求はお受けできません。',
-    attachmentIds: [],
     blocks: [
       {
         type: 'paragraph',
@@ -257,7 +262,6 @@ export const formTypes = [
     label: 'ペットホテル承諾書',
     category: 'hospitalization',
     importantPoint: null,
-    attachmentIds: [],
     blocks: [
       {
         type: 'checklist',
@@ -278,7 +282,6 @@ export const formTypes = [
     label: '検査注意事項',
     category: 'reservation',
     importantPoint: null,
-    attachmentIds: [],
     blocks: [
       {
         type: 'paragraph',
@@ -316,7 +319,6 @@ export const formTypes = [
     label: '一般手術注意事項',
     category: 'reservation',
     importantPoint: null,
-    attachmentIds: [],
     blocks: [
       {
         type: 'paragraph',
@@ -356,7 +358,6 @@ export const formTypes = [
     label: '循環器診療予約',
     category: 'reservation',
     importantPoint: null,
-    attachmentIds: [],
     blocks: [
       {
         type: 'paragraph',
@@ -396,10 +397,6 @@ export function getCategoryLabel(categoryId) {
 
 export function getFormType(formTypeId) {
   return formTypes.find((f) => f.id === formTypeId);
-}
-
-export function getAttachment(attachmentId) {
-  return attachments.find((a) => a.id === attachmentId);
 }
 
 // 予約案内（reservation）は同意書というより予約票のため、署名欄を簡易にする
