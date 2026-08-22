@@ -1,7 +1,12 @@
+import './registerHtml2Canvas';
+import html2canvas from 'html2canvas';
+
+window.html2canvas = html2canvas;
+
+import html2pdf from 'html2pdf.js';
 import React, { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import SignatureCanvas from 'react-signature-canvas';
-import html2pdf from 'html2pdf.js';
 import { Activity, AlertCircle, Calendar, ChevronLeft, Home, Loader2, RotateCcw, Syringe } from 'lucide-react';
 import { db, storage } from './firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
