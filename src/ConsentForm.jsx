@@ -206,11 +206,18 @@ export default function ConsentForm() {
         margin: [10, 10],
         filename: fileName,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       };
 
-      const pdfBlob = await html2pdf().set(opt).from(formRef.current).output('blob');
+      const exportRoot = formRef.current;
+      exportRoot.classList.add('nc-pdf-export');
+      let pdfBlob;
+      try {
+        pdfBlob = await html2pdf().set(opt).from(exportRoot).output('blob');
+      } finally {
+        exportRoot.classList.remove('nc-pdf-export');
+      }
       const storageRef = ref(storage, pdfPath);
       await uploadBytes(storageRef, pdfBlob);
       const downloadURL = await getDownloadURL(storageRef);
