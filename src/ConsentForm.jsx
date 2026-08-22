@@ -1,8 +1,4 @@
-import './registerHtml2Canvas';
-import html2canvas from 'html2canvas';
-
-window.html2canvas = html2canvas;
-
+import './html2canvas-shim.js';
 import html2pdf from 'html2pdf.js';
 import React, { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
