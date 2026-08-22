@@ -212,7 +212,7 @@ export const formTypes = [
     label: '麻酔のおはなし',
     category: 'surgery_explanation',
     importantPoint: '若くて健康な子でも、生まれもった体質や、先天的な疾患により、このようなことが起こる可能性はゼロではないことをご了承ください。',
-    attachmentIds: ['anesthesia_complications'],
+    attachmentIds: [],
     blocks: [
       {
         type: 'paragraph',
