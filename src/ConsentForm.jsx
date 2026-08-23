@@ -370,6 +370,21 @@ export default function ConsentForm() {
       } finally {
         exportRoot.classList.remove('nc-pdf-export');
       }
+
+      // 印刷ウィンドウには Firebase Storage の URL ではなく、今作った PDF を
+      // その場で blob: URL にしたものを渡す。
+      // window.open() で開いたウィンドウを他ドメイン（Firebase Storage 等）の
+      // URL に移動させると、ブラウザのクロスオリジン制限により、こちら側の
+      // JavaScript から printWindow.print() を呼び出せなくなる
+      // （エラーも出ず、PDF は表示されるのに印刷ダイアログだけ開かない、
+      // という分かりにくい症状になる）。
+      // blob: URL はこのページ自身が発行したものとして同一オリジン扱いに
+      // なるため、この制限を受けずに印刷できる。
+      const pdfObjectUrl = URL.createObjectURL(pdfBlob);
+      const printOpened = showPrintWindow(printWindow, pdfObjectUrl);
+      // 印刷ウィンドウ側で使い終わった頃を見計らってメモリを解放する。
+      setTimeout(() => URL.revokeObjectURL(pdfObjectUrl), 5 * 60 * 1000);
+
       const storageRef = ref(storage, pdfPath);
       await uploadBytes(storageRef, pdfBlob);
       const downloadURL = await getDownloadURL(storageRef);
@@ -398,7 +413,6 @@ export default function ConsentForm() {
           : {}),
       });
 
-      const printOpened = showPrintWindow(printWindow, downloadURL);
       handleBackToSelect();
       setSaveNotice(
         printOpened
