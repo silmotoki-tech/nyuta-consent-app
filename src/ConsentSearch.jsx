@@ -120,16 +120,21 @@ export default function ConsentSearch({ onBackToForm }) {
               const formType = getFormType(consent.formTypeId);
               const title = formType?.label ?? consent.formTypeId ?? consent.type ?? '（種類不明）';
               const categoryLabel = getCategoryLabel(consent.category);
+              const docLabel = title + (consent.category ? `（${categoryLabel}）` : '');
+              // ラベル文字（「カルテ番号:」「氏名:」等）は付けない。
+              // カルテ番号・氏名の開始位置だけは全行で揃うよう、
+              // 日付とカルテ番号を固定幅の列にしている。それより後ろ
+              // （動物の名前・書類名・PDFリンク）は単純に横へ並べるだけで、
+              // 位置は揃えない。
               return (
-                <div key={consent.id} className="py-3 text-[13px] text-nc-ink leading-relaxed">
-                  <p className="text-nc-ink-soft text-[12px]">{consent.date}</p>
-                  <p>
-                    {consent.karteNumber ? `カルテ番号: ${consent.karteNumber}　` : ''}
-                    氏名: {displayOwnerName(consent.ownerName)}　動物の名前: {displayPetName(consent.petName)}
-                  </p>
-                  <p className="text-nc-ink-soft text-[12px] mt-0.5">
-                    {title}
-                    {consent.category ? `（${categoryLabel}）` : ''}
+                <p
+                  key={consent.id}
+                  className="py-1.5 text-[13px] text-nc-ink whitespace-nowrap overflow-x-auto flex items-baseline"
+                >
+                  <span className="inline-block w-[92px] shrink-0">{consent.date}</span>
+                  <span className="inline-block w-[64px] shrink-0">{consent.karteNumber || ''}</span>
+                  <span>
+                    {displayOwnerName(consent.ownerName)}　{displayPetName(consent.petName)}　{docLabel}
                     {'　'}
                     <a
                       href={consent.pdfUrl}
@@ -139,8 +144,8 @@ export default function ConsentSearch({ onBackToForm }) {
                     >
                       PDFを開く
                     </a>
-                  </p>
-                </div>
+                  </span>
+                </p>
               );
             })}
           </div>
