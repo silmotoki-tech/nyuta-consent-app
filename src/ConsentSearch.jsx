@@ -38,6 +38,9 @@ export default function ConsentSearch({ onBackToForm }) {
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate() || new Date(),
       }));
+      // 氏名で絞り込んだ場合、Firestore の制約で ownerName 順にしか
+      // 取得できないため、常に日付の降順になるようここで並べ替える。
+      data.sort((a, b) => b.createdAt - a.createdAt);
       setConsents(data);
     } catch (err) {
       console.error('Firestore読み込みエラー:', err);
@@ -112,48 +115,31 @@ export default function ConsentSearch({ onBackToForm }) {
         )}
 
         {!loading && consents.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="divide-y divide-nc-line">
             {consents.map((consent) => {
               const formType = getFormType(consent.formTypeId);
               const title = formType?.label ?? consent.formTypeId ?? consent.type ?? '（種類不明）';
               const categoryLabel = getCategoryLabel(consent.category);
               return (
-                <div
-                  key={consent.id}
-                  className="bg-nc-cream p-4 rounded-[8px] nc-hairline flex flex-col justify-between"
-                >
-                  <div className="mb-4 pb-3 border-b-[0.5px] border-nc-line">
-                    <h2 className="text-[16px] font-medium text-nc-ink">{title}</h2>
-                    {consent.category && (
-                      <p className="text-[12px] text-nc-ink-soft mt-1">{categoryLabel}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5 text-[13px] text-nc-ink mb-4">
-                    <p>
-                      <span className="text-nc-ink-soft">飼い主</span> {displayOwnerName(consent.ownerName)}
-                    </p>
-                    <p>
-                      <span className="text-nc-ink-soft">動物の名前</span> {displayPetName(consent.petName)}
-                    </p>
-                    {consent.karteNumber ? (
-                      <p>
-                        <span className="text-nc-ink-soft">カルテ番号</span> {consent.karteNumber}
-                      </p>
-                    ) : null}
-                    <p>
-                      <span className="text-nc-ink-soft">日付</span> {consent.date}
-                    </p>
-                  </div>
-
-                  <a
-                    href={consent.pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-center bg-nc-green text-nc-cream px-4 py-2.5 rounded-[8px] text-[14px]"
-                  >
-                    PDFを開く
-                  </a>
+                <div key={consent.id} className="py-3 text-[13px] text-nc-ink leading-relaxed">
+                  <p className="text-nc-ink-soft text-[12px]">{consent.date}</p>
+                  <p>
+                    {consent.karteNumber ? `カルテ番号: ${consent.karteNumber}　` : ''}
+                    氏名: {displayOwnerName(consent.ownerName)}　動物の名前: {displayPetName(consent.petName)}
+                  </p>
+                  <p className="text-nc-ink-soft text-[12px] mt-0.5">
+                    {title}
+                    {consent.category ? `（${categoryLabel}）` : ''}
+                    {'　'}
+                    <a
+                      href={consent.pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-nc-green underline"
+                    >
+                      PDFを開く
+                    </a>
+                  </p>
                 </div>
               );
             })}
