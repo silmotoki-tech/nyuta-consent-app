@@ -290,12 +290,21 @@ export default function ConsentForm() {
     setFormData({ ...formData, examOtherChecked: true });
   };
 
-  // 印刷用ウィンドウを開けたら true を返す。
-  // iPad Safari ではポップアップがブロックされることがあるため、
-  // 呼び出し側で結果に応じたメッセージを出し分ける。
-  const openPrintDialog = (pdfUrl) => {
-    const printWindow = window.open(pdfUrl, '_blank');
-    if (!printWindow) return false;
+  // すでに開いてある（空の）ウィンドウに PDF の URL を差し込んで印刷を試みる。
+  // 成功したら true を返す。
+  //
+  // iOS/iPadOS の Safari は、window.open() が「クリックのイベントハンドラの中で
+  // 同期的に」呼ばれていない場合、ユーザー操作によるものとみなさずポップアップを
+  // 黙ってブロックする（警告バナーも出ない）。このアプリでは PDF 生成や
+  // Firebase への保存という複数の非同期処理（await）を経てから印刷ウィンドウを
+  // 開いていたため、保存自体は成功しても印刷ウィンドウが開かれない不具合が
+  // 起きていた。
+  // 対策として、ウィンドウを開く処理そのものはボタンクリック直後・非同期処理の
+  // 前に同期的に行い（handleGenerateAndSave 冒頭の window.open('', '_blank')）、
+  // ここでは PDF が用意できた後にその URL を差し込むだけにする。
+  const showPrintWindow = (printWindow, pdfUrl) => {
+    if (!printWindow || printWindow.closed) return false;
+    printWindow.location.href = pdfUrl;
     const tryPrint = () => {
       try {
         printWindow.print();
@@ -327,6 +336,11 @@ export default function ConsentForm() {
 
     setIsSaving(true);
     setSaveNotice('');
+
+    // クリック直後・非同期処理より前に同期的にウィンドウを開いておく（上の説明参照）。
+    // これがボタンクリックというユーザー操作に紐づく唯一のタイミングなので、
+    // ここを逃すと iOS Safari にブロックされる。
+    const printWindow = window.open('', '_blank');
 
     try {
       if (needsSignature) {
@@ -384,14 +398,16 @@ export default function ConsentForm() {
           : {}),
       });
 
-      const printOpened = openPrintDialog(downloadURL);
+      const printOpened = showPrintWindow(printWindow, downloadURL);
       handleBackToSelect();
       setSaveNotice(
         printOpened
           ? '保存しました'
-          : '保存しました。印刷用のウィンドウを開けませんでした（ポップアップを許可してください）。',
+          : '保存しました。印刷用のウィンドウを開けませんでした（Safariの「ポップアップブロック」をこのサイトで許可してください）。',
       );
     } catch (error) {
+      // 空のまま開いたウィンドウが残らないよう、失敗時は閉じる。
+      if (printWindow && !printWindow.closed) printWindow.close();
       console.error('保存エラーの詳細:', error);
       setSaveNotice(`保存に失敗しました。${error.message}`);
       setCapturedSignature(null);
