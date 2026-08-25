@@ -361,7 +361,7 @@ export default function ConsentForm() {
       const pdfPath = `consents/${yearMonth}/${fileName}`;
 
       const opt = {
-        margin: [10, 10],
+        margin: [6, 6],
         filename: fileName,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
@@ -539,26 +539,6 @@ export default function ConsentForm() {
                   placeholder="12345"
                 />
               </div>
-              <div className="flex flex-col">
-                <label className="text-[12px] text-nc-brown mb-1">電話番号</label>
-                <input
-                  type="tel"
-                  className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="090-0000-0000"
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-[12px] text-nc-brown mb-1">緊急連絡先</label>
-                <input
-                  type="text"
-                  className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
-                  value={formData.emergencyContact}
-                  onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
-                  placeholder="090-0000-0000（続柄）"
-                />
-              </div>
             </div>
             <div className="flex flex-col w-full md:w-1/2 mt-4">
               <label className="text-[12px] text-nc-brown mb-1">日付</label>
@@ -636,6 +616,30 @@ export default function ConsentForm() {
                   {choiceField.prompt}：{choiceValue}
                 </p>
               ) : null}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="flex flex-col">
+                  <label className="text-[12px] text-nc-brown mb-1">電話番号</label>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="090-0000-0000"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[12px] text-nc-brown mb-1">緊急連絡先</label>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
+                    value={formData.emergencyContact}
+                    onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
+                    placeholder="090-0000-0000（続柄）"
+                  />
+                </div>
+              </div>
               <p className="text-[12px] text-nc-ink-soft mb-3">
                 上記の説明を確認したうえで、枠内にご署名ください。
               </p>
