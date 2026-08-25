@@ -290,18 +290,23 @@ export default function ConsentForm() {
     setFormData({ ...formData, examOtherChecked: true });
   };
 
-  // すでに開いてある（空の）ウィンドウに PDF の URL を差し込んで印刷を試みる。
-  // 成功したら true を返す。
+  // すでに開いてある（空の）ウィンドウに PDF の URL を差し込んで表示する。
+  // ウィンドウの表示自体に成功したら true を返す。
   //
   // iOS/iPadOS の Safari は、window.open() が「クリックのイベントハンドラの中で
   // 同期的に」呼ばれていない場合、ユーザー操作によるものとみなさずポップアップを
-  // 黙ってブロックする（警告バナーも出ない）。このアプリでは PDF 生成や
-  // Firebase への保存という複数の非同期処理（await）を経てから印刷ウィンドウを
-  // 開いていたため、保存自体は成功しても印刷ウィンドウが開かれない不具合が
-  // 起きていた。
-  // 対策として、ウィンドウを開く処理そのものはボタンクリック直後・非同期処理の
-  // 前に同期的に行い（handleGenerateAndSave 冒頭の window.open('', '_blank')）、
-  // ここでは PDF が用意できた後にその URL を差し込むだけにする。
+  // 黙ってブロックする（警告バナーも出ない）。そのため、ウィンドウを開く処理
+  // そのものはボタンクリック直後・非同期処理の前に同期的に行い
+  // （handleGenerateAndSave 冒頭の window.open('', '_blank')）、ここでは PDF が
+  // 用意できた後にその URL を差し込むだけにしている。
+  //
+  // 印刷（window.print()）は「うまくいけば動く」程度のおまけとして一応
+  // 試みるが、当てにはしていない。iOS の Safari は、PDF を表示している
+  // ウィンドウに対して JavaScript から印刷を自動開始することを許可しない
+  // ことが多く（実機で確認済み）、この制限は JavaScript 側からは回避できない。
+  // そのため、実際の印刷は「開いたPDF画面の共有アイコンからプリントを選ぶ」
+  // という、スタッフによる手動の2ステップを正規の手順としている
+  // （画面下の案内文もその前提で表示している）。
   const showPrintWindow = (printWindow, pdfUrl) => {
     if (!printWindow || printWindow.closed) return false;
     printWindow.location.href = pdfUrl;
@@ -309,7 +314,8 @@ export default function ConsentForm() {
       try {
         printWindow.print();
       } catch (e) {
-        console.error('印刷ダイアログの起動に失敗しました:', e);
+        // 自動印刷が使えない環境では起きて当然なので、エラーとしては扱わない。
+        console.warn('自動印刷は利用できませんでした（手動での印刷が必要です）:', e);
       }
     };
     printWindow.addEventListener('load', tryPrint);
@@ -416,7 +422,7 @@ export default function ConsentForm() {
       handleBackToSelect();
       setSaveNotice(
         printOpened
-          ? '保存しました'
+          ? '保存しました。開いたPDFの画面右上の共有アイコンから「プリント」を選ぶと印刷できます。'
           : '保存しました。印刷用のウィンドウを開けませんでした（Safariの「ポップアップブロック」をこのサイトで許可してください）。',
       );
     } catch (error) {
@@ -679,7 +685,9 @@ export default function ConsentForm() {
                 '保存して印刷'
               )}
             </button>
-            <p className="text-[12px] text-nc-ink-soft mt-2">保存後、印刷ダイアログが開きます。</p>
+            <p className="text-[12px] text-nc-ink-soft mt-2">
+              保存すると別タブでPDFが開きます。画面右上の共有アイコンから「プリント」を選んで印刷してください。
+            </p>
           </div>
         </div>
       </div>
