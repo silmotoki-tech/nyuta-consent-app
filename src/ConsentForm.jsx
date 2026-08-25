@@ -59,7 +59,6 @@ function decodeImage(dataUrl) {
 const initialFormData = {
   ownerName: '',
   petName: '',
-  karteNumber: '',
   phone: '',
   emergencyContact: '',
   date: new Date().toISOString().split('T')[0],
@@ -400,7 +399,6 @@ export default function ConsentForm() {
         category: selectedFormType.category,
         ownerName: formData.ownerName,
         petName: formData.petName,
-        karteNumber: formData.karteNumber,
         phone: formData.phone,
         emergencyContact: formData.emergencyContact,
         date: formData.date,
@@ -502,7 +500,16 @@ export default function ConsentForm() {
 
           <section className="mb-8">
             <SectionHeading number={1}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col">
+                <label className="text-[12px] text-nc-brown mb-1">日付</label>
+                <input
+                  type="date"
+                  className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
+              </div>
               <div className="flex flex-col">
                 <label className="text-[12px] text-nc-brown mb-1">飼い主氏名</label>
                 <div className="flex items-center gap-2">
@@ -529,25 +536,6 @@ export default function ConsentForm() {
                   <span className="text-[15px] text-nc-ink shrink-0">ちゃん</span>
                 </div>
               </div>
-              <div className="flex flex-col">
-                <label className="text-[12px] text-nc-brown mb-1">カルテ番号</label>
-                <input
-                  type="text"
-                  className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
-                  value={formData.karteNumber}
-                  onChange={(e) => setFormData({ ...formData, karteNumber: e.target.value })}
-                  placeholder="12345"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col w-full md:w-1/2 mt-4">
-              <label className="text-[12px] text-nc-brown mb-1">日付</label>
-              <input
-                type="date"
-                className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              />
             </div>
             </SectionHeading>
           </section>
@@ -609,7 +597,7 @@ export default function ConsentForm() {
           )}
 
           {needsSignature && (
-            <section className="mb-8">
+            <section className="mb-8 nc-avoid-break">
               <SectionHeading number={signatureNumber} title="ご署名">
               {choiceValue ? (
                 <p className="text-[14px] text-nc-ink leading-[1.9] mb-3">

@@ -80,12 +80,12 @@ select {
    PDF書き出し時だけ余白・行間・カードの外枠を詰めて印刷に適した密度にする。
    画面表示（.nc-pdf-export が付いていない状態）には一切影響しない。 */
 .nc-pdf-export {
-  padding: 10px !important;
+  padding: 6px !important;
   border: none !important;
   border-radius: 0 !important;
 }
 .nc-pdf-export .mb-8 {
-  margin-bottom: 14px !important;
+  margin-bottom: 11px !important;
 }
 .nc-pdf-export .mb-6 {
   margin-bottom: 10px !important;
@@ -118,7 +118,26 @@ select {
   padding: 8px !important;
 }
 .nc-pdf-export .nc-sig-guide {
-  min-height: 115px !important;
+  min-height: 90px !important;
+}
+.nc-pdf-export .max-h-52 {
+  max-height: 90px !important;
+}
+/* 署名欄（電話番号・緊急連絡先・確認文・サイン枠をまとめたブロック）が
+   ページの区切り目で分断されないようにする。html2pdf.js の pagebreak
+   プラグイン（mode: 'css'）は break-inside: avoid を見て、要素が
+   ページをまたいで分断される場合は次のページへまとめて送ってくれる。 */
+.nc-pdf-export .nc-avoid-break {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+/* data-html2canvas-ignore の要素（保存ボタンなど画面操作用のUI）は、
+   html2canvas による「描画」からは除外されるが、レイアウト計算（高さ）
+   には残ってしまう。そのままだと画面には映らない余白が最終ページの
+   末尾に加算され、内容は1枚に収まっているのに空白だけの2枚目が
+   できてしまうことがあるため、PDF化時はレイアウトからも完全に外す。 */
+.nc-pdf-export [data-html2canvas-ignore] {
+  display: none !important;
 }
 .nc-pdf-export .text-\[14px\] {
   font-size: 13px !important;
