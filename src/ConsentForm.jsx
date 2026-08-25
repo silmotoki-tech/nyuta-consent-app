@@ -68,10 +68,14 @@ const initialFormData = {
   examOtherChecked: false,
 };
 
+// html2canvas は inline-flex による中央揃えを正確に再現できず、丸バッジの
+// 数字が枠からずれて見えることがあった（実際にPDFで確認済み）。
+// flex ではなく line-height を高さと同じ値にする方法で中央揃えする方が、
+// html2canvas でも安定して同じ見た目になる。
 function NumberBadge({ number }) {
   return (
-    <span className="mt-0.5 inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-nc-green-soft text-[12px] text-nc-green">
-      {number}
+    <span className="nc-badge mt-0.5 shrink-0 rounded-full bg-nc-green-soft text-[12px] text-nc-green text-center">
+      <span className="nc-badge-num">{number}</span>
     </span>
   );
 }
@@ -92,6 +96,31 @@ function PendingNote() {
   return <p className="text-[14px] text-nc-ink-soft leading-[1.9]">準備中です</p>;
 }
 
+// html2canvas は <input> の value テキストを正確に描画できないことがあり、
+// 実際に日付・氏名・電話番号の欄で文字が欠けて見える不具合が発生した。
+// 画面表示では通常どおり <input> を使い、PDF化時だけ同じ内容の
+// ただのテキスト（.nc-pdf-value）に差し替えて表示することで回避する。
+// data-html2canvas-ignore を付けた <input> 自体は PDF化時にレイアウトから
+// も完全に外れる（index.css 側の共通ルール）。
+function PdfSafeField({ type = 'text', inputMode, className, value, onChange, placeholder }) {
+  return (
+    <>
+      <input
+        type={type}
+        inputMode={inputMode}
+        className={className}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        data-html2canvas-ignore
+      />
+      <div className={`nc-pdf-value ${className}`}>
+        {value ? value : <span className="text-nc-ink-soft">{placeholder}</span>}
+      </div>
+    </>
+  );
+}
+
 function Checklist({ items }) {
   return (
     <ul className="space-y-2.5">
@@ -108,12 +137,12 @@ function Checklist({ items }) {
 function CheckMark({ checked }) {
   return (
     <span
-      className={`mt-[0.35em] inline-flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[2px] border-[0.5px] border-nc-ink text-[11px] leading-none ${
+      className={`nc-checkmark mt-[0.35em] shrink-0 rounded-[2px] border-[0.5px] border-nc-ink text-[11px] text-center ${
         checked ? 'bg-nc-ink text-nc-cream' : 'bg-transparent text-transparent'
       }`}
       aria-hidden="true"
     >
-      ✓
+      <span className="nc-checkmark-glyph">✓</span>
     </span>
   );
 }
@@ -503,7 +532,7 @@ export default function ConsentForm() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col">
                 <label className="text-[12px] text-nc-brown mb-1">日付</label>
-                <input
+                <PdfSafeField
                   type="date"
                   className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
                   value={formData.date}
@@ -513,7 +542,7 @@ export default function ConsentForm() {
               <div className="flex flex-col">
                 <label className="text-[12px] text-nc-brown mb-1">飼い主氏名</label>
                 <div className="flex items-center gap-2">
-                  <input
+                  <PdfSafeField
                     type="text"
                     className="w-[10em] border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
                     value={formData.ownerName}
@@ -526,7 +555,7 @@ export default function ConsentForm() {
               <div className="flex flex-col">
                 <label className="text-[12px] text-nc-brown mb-1">動物の名前</label>
                 <div className="flex items-center gap-2">
-                  <input
+                  <PdfSafeField
                     type="text"
                     className="w-[10em] border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
                     value={formData.petName}
@@ -607,7 +636,7 @@ export default function ConsentForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="flex flex-col">
                   <label className="text-[12px] text-nc-brown mb-1">電話番号</label>
-                  <input
+                  <PdfSafeField
                     type="tel"
                     inputMode="tel"
                     className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"
@@ -618,7 +647,7 @@ export default function ConsentForm() {
                 </div>
                 <div className="flex flex-col">
                   <label className="text-[12px] text-nc-brown mb-1">緊急連絡先</label>
-                  <input
+                  <PdfSafeField
                     type="tel"
                     inputMode="tel"
                     className="border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink"

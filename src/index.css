@@ -67,6 +67,23 @@ select {
   min-height: 220px;
 }
 
+/* セクション番号の丸バッジ。html2canvas は flex による中央揃えを正確に
+   再現できないため、line-height を高さと同じ値にして中央揃えする。 */
+.nc-badge {
+  display: inline-block;
+  height: 26px;
+  width: 26px;
+  line-height: 26px;
+}
+
+/* チェックリストのチェックマーク。同じ理由で line-height により中央揃え。 */
+.nc-checkmark {
+  display: inline-block;
+  height: 14px;
+  width: 14px;
+  line-height: 13px;
+}
+
 /* PDF化時のみ。画面上のクリーム背景は維持する */
 .nc-pdf-export,
 .nc-pdf-export.bg-nc-cream,
@@ -139,16 +156,40 @@ select {
 .nc-pdf-export [data-html2canvas-ignore] {
   display: none !important;
 }
+/* html2canvas は <input> の value テキストを正確に描画できないことがあり
+   （文字の上下が欠けたり潰れて見える）、日付・氏名・電話番号などの入力欄で
+   実際に発生した。画面表示では通常どおり <input> を使うが、PDF化時だけ
+   同じ内容を持つ ただのテキスト（.nc-pdf-value）に差し替えて表示することで、
+   input特有の描画不具合を避ける。 */
+.nc-pdf-value {
+  display: none;
+}
+.nc-pdf-export .nc-pdf-value {
+  display: block !important;
+}
 .nc-pdf-export .text-\[14px\] {
   font-size: 13px !important;
 }
 .nc-pdf-export .text-\[15px\] {
   font-size: 13px !important;
 }
-.nc-pdf-export .h-\[26px\],
-.nc-pdf-export .w-\[26px\] {
+.nc-pdf-export .nc-badge {
   height: 20px !important;
   width: 20px !important;
+  line-height: 20px !important;
+  font-size: 11px !important;
+}
+/* html2canvas は line-height による中央揃えの通りに描画せず、数字が
+   円の下寄りに描画されるクセがあることが実際のPDFで確認できた
+   （実ブラウザ表示では問題なし）。html2canvas向けにだけ、数字を
+   別要素に分けて少し上へずらして補正する。 */
+.nc-pdf-export .nc-badge-num {
+  position: relative;
+  top: -3px;
+}
+.nc-pdf-export .nc-checkmark-glyph {
+  position: relative;
+  top: -4px;
 }
 .nc-pdf-export .space-y-8 > :not(:last-child) {
   margin-block-end: 10px !important;
