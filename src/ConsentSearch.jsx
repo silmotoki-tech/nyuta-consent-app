@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
 import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
+import { getDocument } from './documents';
 import { getFormType, getCategoryLabel } from './formTypes';
 import { displayOwnerName, displayPetName } from './displayNames';
 
@@ -117,10 +118,13 @@ export default function ConsentSearch({ onBackToForm }) {
         {!loading && consents.length > 0 && (
           <div className="divide-y divide-nc-line">
             {consents.map((consent) => {
+              const v2Document = getDocument(consent.formTypeId);
               const formType = getFormType(consent.formTypeId);
-              const title = formType?.label ?? consent.formTypeId ?? consent.type ?? '（種類不明）';
+              const title = v2Document?.label ?? formType?.label ?? consent.formTypeId ?? consent.type ?? '（種類不明）';
               const categoryLabel = getCategoryLabel(consent.category);
               const docLabel = title + (consent.category ? `（${categoryLabel}）` : '');
+              const recordUrl = consent.schemaVersion === 2 ? consent.recordImageUrl : consent.pdfUrl;
+              const recordLabel = consent.schemaVersion === 2 ? '確認記録を開く' : 'PDFを開く';
               // ラベル文字（「カルテ番号:」「氏名:」等）は付けない。
               // カルテ番号・氏名の開始位置だけは全行で揃うよう、
               // 日付とカルテ番号を固定幅の列にしている。それより後ろ
@@ -136,14 +140,16 @@ export default function ConsentSearch({ onBackToForm }) {
                   <span>
                     {displayOwnerName(consent.ownerName)}　{displayPetName(consent.petName)}　{docLabel}
                     {'　'}
-                    <a
-                      href={consent.pdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-nc-green underline"
-                    >
-                      PDFを開く
-                    </a>
+                    {recordUrl ? (
+                      <a
+                        href={recordUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-nc-green underline"
+                      >
+                        {recordLabel}
+                      </a>
+                    ) : null}
                   </span>
                 </p>
               );

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { Loader2, LogOut, PenTool, Search } from 'lucide-react';
-import ConsentForm from './ConsentForm';
 import ConsentSearch from './ConsentSearch';
+import V2ConsentApp from './v2/V2ConsentApp';
 import Login from './Login';
 import { auth } from './firebase';
 
@@ -75,7 +75,7 @@ export default function App() {
       </nav>
 
       <main className="flex-1 overflow-y-auto">
-        {currentView === 'form' && <ConsentForm />}
+        {currentView === 'form' && <V2ConsentApp />}
         {currentView === 'search' && <ConsentSearch onBackToForm={() => setCurrentView('form')} />}
       </main>
     </div>
