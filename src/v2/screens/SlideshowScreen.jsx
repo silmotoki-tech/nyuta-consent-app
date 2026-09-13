@@ -1,55 +1,60 @@
 import React from 'react';
+import SlideView from '../SlideView';
+import { allSlidesChecked } from '../session';
 
 export default function SlideshowScreen({
   documentDef,
   documentSession,
+  session,
+  slides,
   slideIndex,
   onToggleCheck,
   onBack,
   onNext,
+  notice,
 }) {
-  const slide = documentDef.slides[slideIndex];
-  const total = documentDef.slides.length;
-  const checked = Boolean(documentSession.slideCheckTimestamps?.[slide.id]);
+  const slide = slides[slideIndex];
+  const total = slides.length;
+  const checked = Boolean(documentSession.slideCheckTimestamps?.[slide?.id]);
+  const isLastSlide = slideIndex === total - 1;
+  const canProceedToSignature = allSlidesChecked(documentDef, documentSession, session);
+
+  if (!slide) return null;
 
   return (
-    <div className="max-w-5xl mx-auto p-5 md:p-8">
-      <div className="flex items-end justify-between mb-4">
-        <h1 className="text-[19px] font-medium text-nc-green">{documentDef.label}</h1>
-        <p className="text-[13px] text-nc-ink-soft">{slideIndex + 1} / {total}</p>
-      </div>
+    <div className="mx-auto max-w-5xl p-5 md:p-8">
+      <h1 className="mb-6 text-[19px] font-medium text-nc-green">{documentDef.label}</h1>
 
-      <div className="rounded-[8px] nc-hairline overflow-hidden bg-white mb-5">
-        <img
-          src={slide.image}
-          alt={`${documentDef.label} ${slideIndex + 1}枚目`}
-          className="w-full h-auto block"
-        />
-      </div>
+      <SlideView
+        slide={slide}
+        slideIndex={slideIndex}
+        totalSlides={total}
+        checked={checked}
+        onToggleCheck={(value) => onToggleCheck(slide.id, value)}
+        onNext={onNext}
+        isLastSlide={isLastSlide}
+        canProceedToSignature={canProceedToSignature}
+      />
 
-      <label className="flex items-center gap-2 text-[16px] mb-6">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onToggleCheck(slide.id, e.target.checked)}
-        />
-        理解しました
-      </label>
+      {notice ? (
+        <p className="mt-4 rounded-[8px] nc-hairline px-3 py-2.5 text-[14px] text-nc-ink">
+          {notice}
+        </p>
+      ) : null}
 
-      <div className="flex gap-3">
+      {isLastSlide && !canProceedToSignature ? (
+        <p className="mt-4 text-[13px] text-nc-ink-soft">
+          すべてのスライドで「理解しました」にチェックを入れると署名へ進めます。
+        </p>
+      ) : null}
+
+      <div className="mt-6">
         <button
           type="button"
           onClick={onBack}
-          className="px-5 py-3 rounded-[8px] text-[15px] nc-hairline text-nc-ink"
+          className="min-h-[48px] rounded-[8px] px-5 py-3 text-[15px] nc-hairline text-nc-ink"
         >
           戻る
-        </button>
-        <button
-          type="button"
-          onClick={onNext}
-          className="bg-nc-green text-nc-cream px-6 py-3 rounded-[8px] text-[15px]"
-        >
-          次へ
         </button>
       </div>
     </div>

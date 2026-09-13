@@ -6,12 +6,22 @@ const labelClass = 'text-[12px] text-nc-brown mb-1';
 
 export default function StartScreen({ session, onChange, onNext, notice }) {
   const selection = session.procedureSelections.ippan_shujutsu || { selected: [], other: '' };
+  const showFastingOption = documents.some(
+    (document) => session.selectedDocumentIds.includes(document.id) && document.hasFastingOption,
+  );
 
   const toggleDocument = (id, checked) => {
     const nextIds = checked
       ? [...new Set([...session.selectedDocumentIds, id])]
       : session.selectedDocumentIds.filter((value) => value !== id);
-    onChange({ ...session, selectedDocumentIds: nextIds });
+    const stillHasFasting = documents.some(
+      (document) => nextIds.includes(document.id) && document.hasFastingOption,
+    );
+    onChange({
+      ...session,
+      selectedDocumentIds: nextIds,
+      requiresFasting: stillHasFasting ? session.requiresFasting : false,
+    });
   };
 
   const toggleProcedure = (option, checked) => {
@@ -102,6 +112,20 @@ export default function StartScreen({ session, onChange, onNext, notice }) {
           ))}
         </div>
       </section>
+
+      {showFastingOption ? (
+        <section className="mb-6">
+          <label className="flex min-h-[48px] items-center gap-3 text-[15px]">
+            <input
+              type="checkbox"
+              checked={Boolean(session.requiresFasting)}
+              onChange={(e) => onChange({ ...session, requiresFasting: e.target.checked })}
+              className="h-[22px] w-[22px] shrink-0"
+            />
+            絶食あり
+          </label>
+        </section>
+      ) : null}
 
       <section className="mb-8">
         <p className={labelClass}>手術・処置の内容</p>

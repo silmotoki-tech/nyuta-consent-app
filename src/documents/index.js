@@ -1,6 +1,7 @@
 import { ippanShujutsu } from './ippan-shujutsu';
+import { kensaChuijikou } from './kensa-chuijikou';
 
-export const documents = [ippanShujutsu];
+export const documents = [ippanShujutsu, kensaChuijikou];
 
 export function getDocument(id) {
   return documents.find((document) => document.id === id) || null;

@@ -16,8 +16,8 @@ export default function SignatureScreen({
   onClearSignature,
 }) {
   const sigCanvas = useRef({});
-  const ready = allSlidesChecked(documentDef, documentSession);
-  const missing = uncheckedSlideNumbers(documentDef, documentSession);
+  const ready = allSlidesChecked(documentDef, documentSession, session);
+  const missing = uncheckedSlideNumbers(documentDef, documentSession, session);
 
   const handleConfirm = () => {
     if (!ready) return;

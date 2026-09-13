@@ -1,5 +1,5 @@
 import { displayOwnerName, displayPetName } from '../displayNames';
-import { formatCheckedAt } from './session';
+import { formatCheckedAt, visibleContentItems, visibleSlides } from './session';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -29,18 +29,18 @@ export function buildPrintHtml({
   documentSession,
   recordImageDataUrl,
 }) {
-  const checks = (documentDef.slides || [])
+  const checks = visibleSlides(documentDef, session)
     .map((slide, index) => {
       const stamp = formatCheckedAt(documentSession.slideCheckTimestamps?.[slide.id]);
       return `<li>${index + 1}枚目：${escapeHtml(stamp || '未確認')}</li>`;
     })
     .join('');
 
-  const items = (documentDef.fullText.items || [])
-    .map((item) => `<li>${escapeHtml(itemText(item, session.foodPortions))}</li>`)
+  const items = visibleContentItems(documentDef.fullText.items, session)
+    .map((item) => `<li>${escapeHtml(itemText(item.text, session.foodPortions))}</li>`)
     .join('');
-  const footnotes = (documentDef.fullText.footnotes || [])
-    .map((item) => `<li>${escapeHtml(item)}</li>`)
+  const footnotes = visibleContentItems(documentDef.fullText.footnotes, session)
+    .map((item) => `<li>${escapeHtml(item.text)}</li>`)
     .join('');
 
   return `<!doctype html>

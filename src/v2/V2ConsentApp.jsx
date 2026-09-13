@@ -10,6 +10,7 @@ import {
   createDocumentSession,
   createInitialSession,
   ensureDocumentSession,
+  visibleSlides,
 } from './session';
 import ConfirmScreen from './screens/ConfirmScreen';
 import FinalConfirmScreen from './screens/FinalConfirmScreen';
@@ -36,6 +37,7 @@ export default function V2ConsentApp() {
   const documentId = session.selectedDocumentIds[0] || 'ippan_shujutsu';
   const documentDef = useMemo(() => getDocument(documentId), [documentId]);
   const documentSession = ensureDocumentSession(session, documentId);
+  const slides = useMemo(() => visibleSlides(documentDef, session), [documentDef, session]);
 
   const updateDocumentSession = (nextDocumentSession) => {
     const others = (session.documentSessions || []).filter((item) => item.documentId !== documentId);
@@ -54,10 +56,12 @@ export default function V2ConsentApp() {
       setNotice('書類を選択してください。');
       return;
     }
-    const selection = session.procedureSelections[documentId];
-    if (!selection?.selected?.length) {
-      setNotice('手術・処置の内容を選択してください。');
-      return;
+    if (documentDef.procedureOptions?.length) {
+      const selection = session.procedureSelections[documentId];
+      if (!selection?.selected?.length) {
+        setNotice('手術・処置の内容を選択してください。');
+        return;
+      }
     }
     setNotice('');
     if (!(session.documentSessions || []).some((item) => item.documentId === documentId)) {
@@ -75,10 +79,16 @@ export default function V2ConsentApp() {
   };
 
   const handleSlideNext = () => {
-    if (slideIndex < documentDef.slides.length - 1) {
+    if (slideIndex < slides.length - 1) {
+      setNotice('');
       setSlideIndex(slideIndex + 1);
       return;
     }
+    if (!allSlidesChecked(documentDef, documentSession, session)) {
+      setNotice('すべてのスライドで「理解しました」にチェックを入れてから署名へ進んでください。');
+      return;
+    }
+    setNotice('');
     setStep('signature');
   };
 
@@ -92,7 +102,7 @@ export default function V2ConsentApp() {
   };
 
   const handleSaveAndPrint = async () => {
-    if (!allSlidesChecked(documentDef, documentSession) || !documentSession.signatureDataUrl) {
+    if (!allSlidesChecked(documentDef, documentSession, session) || !documentSession.signatureDataUrl) {
       setNotice('署名とスライド確認がそろっていません。');
       return;
     }
@@ -110,7 +120,7 @@ export default function V2ConsentApp() {
         date: session.date,
         visitTime: session.visitTime,
         documentLabel: documentDef.label,
-        slides: documentDef.slides,
+        slides,
         slideCheckTimestamps: documentSession.slideCheckTimestamps,
         signatureDataUrl: documentSession.signatureDataUrl,
         explainerStaff: documentSession.explainerStaff,
@@ -143,6 +153,7 @@ export default function V2ConsentApp() {
         phone: session.phone,
         emergencyContact: session.emergencyContact,
         procedureSelection: session.procedureSelections[documentDef.id] || null,
+        requiresFasting: Boolean(session.requiresFasting),
         slideVersion: documentDef.slideVersion,
         slideCheckTimestamps: documentSession.slideCheckTimestamps,
         signedAt: documentSession.signedAt,
@@ -203,13 +214,17 @@ export default function V2ConsentApp() {
       <SlideshowScreen
         documentDef={documentDef}
         documentSession={documentSession}
+        session={session}
+        slides={slides}
         slideIndex={slideIndex}
         onToggleCheck={handleToggleCheck}
         onBack={() => {
+          setNotice('');
           if (slideIndex === 0) setStep('confirm');
           else setSlideIndex(slideIndex - 1);
         }}
         onNext={handleSlideNext}
+        notice={notice}
       />
     );
   }
@@ -222,7 +237,7 @@ export default function V2ConsentApp() {
         documentDef={documentDef}
         documentSession={documentSession}
         onBack={() => {
-          setSlideIndex(documentDef.slides.length - 1);
+          setSlideIndex(Math.max(slides.length - 1, 0));
           setStep('slideshow');
         }}
         onNext={handleSigned}

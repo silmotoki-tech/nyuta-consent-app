@@ -11,6 +11,7 @@ export function createInitialSession() {
     procedureSelections: {
       ippan_shujutsu: { selected: [], other: '' },
     },
+    requiresFasting: false,
     documentSessions: [],
   };
 }
@@ -35,15 +36,35 @@ export function ensureDocumentSession(session, documentId) {
   return createDocumentSession(documentId);
 }
 
-export function uncheckedSlideNumbers(documentDef, documentSession) {
+export function isConditionMet(condition, session) {
+  if (!condition) return true;
+  return Boolean(session?.[condition]);
+}
+
+export function visibleSlides(documentDef, session) {
+  return (documentDef?.slides || []).filter((slide) => isConditionMet(slide.condition, session));
+}
+
+export function normalizeContentItem(item) {
+  if (typeof item === 'string') return { text: item };
+  return item || { text: '' };
+}
+
+export function visibleContentItems(items, session) {
+  return (items || [])
+    .map(normalizeContentItem)
+    .filter((item) => isConditionMet(item.condition, session));
+}
+
+export function uncheckedSlideNumbers(documentDef, documentSession, session) {
   if (!documentDef || !documentSession) return [];
-  return documentDef.slides
+  return visibleSlides(documentDef, session)
     .map((slide, index) => (documentSession.slideCheckTimestamps?.[slide.id] ? null : index + 1))
     .filter(Boolean);
 }
 
-export function allSlidesChecked(documentDef, documentSession) {
-  return uncheckedSlideNumbers(documentDef, documentSession).length === 0;
+export function allSlidesChecked(documentDef, documentSession, session) {
+  return uncheckedSlideNumbers(documentDef, documentSession, session).length === 0;
 }
 
 export function formatCheckedAt(value) {
