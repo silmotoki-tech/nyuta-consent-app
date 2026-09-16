@@ -1,39 +1,69 @@
 import React from 'react';
 import { documents } from '../../documents';
+import { emptySelection } from '../session';
 
 const fieldClass = 'border-[0.5px] border-nc-line bg-nc-cream p-2.5 rounded-[8px] text-[15px] text-nc-ink';
 const labelClass = 'text-[12px] text-nc-brown mb-1';
 
 export default function StartScreen({ session, onChange, onNext, notice }) {
-  const selection = session.procedureSelections.ippan_shujutsu || { selected: [], other: '' };
+  const selectedIds = session.selectedDocumentIds || [];
+  const primaryDocument = documents.find((document) => document.id === selectedIds[0]) || null;
+  const procedureOptions = primaryDocument?.procedureOptions || [];
+  const procedureSelection = session.procedureSelections[primaryDocument?.id] || emptySelection();
+  const examDocument = documents.find(
+    (document) => selectedIds.includes(document.id) && document.examOptions?.length,
+  ) || null;
+  const examOptions = examDocument?.examOptions || [];
+  const examSelection = session.examSelection || emptySelection();
   const showFastingOption = documents.some(
-    (document) => session.selectedDocumentIds.includes(document.id) && document.hasFastingOption,
+    (document) => selectedIds.includes(document.id) && document.hasFastingOption,
   );
+  const hasDocument = selectedIds.length > 0;
 
   const toggleDocument = (id, checked) => {
     const nextIds = checked
-      ? [...new Set([...session.selectedDocumentIds, id])]
-      : session.selectedDocumentIds.filter((value) => value !== id);
+      ? [...new Set([...selectedIds, id])]
+      : selectedIds.filter((value) => value !== id);
     const stillHasFasting = documents.some(
       (document) => nextIds.includes(document.id) && document.hasFastingOption,
     );
+    const stillHasExam = documents.some(
+      (document) => nextIds.includes(document.id) && document.examOptions?.length,
+    );
+    const nextSelections = { ...session.procedureSelections };
+    if (checked && !nextSelections[id]) {
+      nextSelections[id] = emptySelection();
+    }
     onChange({
       ...session,
       selectedDocumentIds: nextIds,
+      procedureSelections: nextSelections,
+      examSelection: stillHasExam ? examSelection : emptySelection(),
       requiresFasting: stillHasFasting ? session.requiresFasting : false,
     });
   };
 
   const toggleProcedure = (option, checked) => {
+    if (!primaryDocument) return;
     const selected = checked
-      ? [...new Set([...selection.selected, option])]
-      : selection.selected.filter((value) => value !== option);
+      ? [...new Set([...procedureSelection.selected, option])]
+      : procedureSelection.selected.filter((value) => value !== option);
     onChange({
       ...session,
       procedureSelections: {
         ...session.procedureSelections,
-        ippan_shujutsu: { ...selection, selected },
+        [primaryDocument.id]: { ...procedureSelection, selected },
       },
+    });
+  };
+
+  const toggleExam = (option, checked) => {
+    const selected = checked
+      ? [...new Set([...examSelection.selected, option])]
+      : examSelection.selected.filter((value) => value !== option);
+    onChange({
+      ...session,
+      examSelection: { ...examSelection, selected },
     });
   };
 
@@ -98,14 +128,15 @@ export default function StartScreen({ session, onChange, onNext, notice }) {
       </div>
 
       <section className="mb-6">
-        <p className={labelClass}>書類</p>
-        <div className="space-y-2">
+        <p className={labelClass}>書類の選択</p>
+        <div className="space-y-1">
           {documents.map((document) => (
-            <label key={document.id} className="flex items-center gap-2 text-[15px]">
+            <label key={document.id} className="flex min-h-[48px] items-center gap-3 text-[15px]">
               <input
                 type="checkbox"
-                checked={session.selectedDocumentIds.includes(document.id)}
+                checked={selectedIds.includes(document.id)}
                 onChange={(e) => toggleDocument(document.id, e.target.checked)}
+                className="h-[22px] w-[22px] shrink-0"
               />
               {document.label}
             </label>
@@ -127,42 +158,75 @@ export default function StartScreen({ session, onChange, onNext, notice }) {
         </section>
       ) : null}
 
-      <section className="mb-8">
-        <p className={labelClass}>手術・処置の内容</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {documents[0].procedureOptions.map((option) => (
-            <label key={option} className="flex items-center gap-2 text-[15px]">
-              <input
-                type="checkbox"
-                checked={selection.selected.includes(option)}
-                onChange={(e) => toggleProcedure(option, e.target.checked)}
-              />
-              {option}
-            </label>
-          ))}
-        </div>
-        {selection.selected.includes('その他') ? (
-          <input
-            className={`${fieldClass} mt-3 w-full`}
-            value={selection.other}
-            onChange={(e) => onChange({
-              ...session,
-              procedureSelections: {
-                ...session.procedureSelections,
-                ippan_shujutsu: { ...selection, other: e.target.value },
-              },
-            })}
-            placeholder="その他の内容"
-          />
-        ) : null}
-      </section>
+      {procedureOptions.length ? (
+        <section className="mb-6">
+          <p className={labelClass}>手術・処置の内容</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {procedureOptions.map((option) => (
+              <label key={option} className="flex min-h-[44px] items-center gap-2 text-[15px]">
+                <input
+                  type="checkbox"
+                  checked={procedureSelection.selected.includes(option)}
+                  onChange={(e) => toggleProcedure(option, e.target.checked)}
+                />
+                {option}
+              </label>
+            ))}
+          </div>
+          {procedureSelection.selected.includes('その他') ? (
+            <input
+              className={`${fieldClass} mt-3 w-full`}
+              value={procedureSelection.other}
+              onChange={(e) => onChange({
+                ...session,
+                procedureSelections: {
+                  ...session.procedureSelections,
+                  [primaryDocument.id]: { ...procedureSelection, other: e.target.value },
+                },
+              })}
+              placeholder="その他の内容"
+            />
+          ) : null}
+        </section>
+      ) : null}
+
+      {examOptions.length ? (
+        <section className="mb-6">
+          <p className={labelClass}>実施検査</p>
+          <div className="space-y-1">
+            {examOptions.map((option) => (
+              <label key={option} className="flex min-h-[48px] items-center gap-3 text-[15px]">
+                <input
+                  type="checkbox"
+                  checked={examSelection.selected.includes(option)}
+                  onChange={(e) => toggleExam(option, e.target.checked)}
+                  className="h-[22px] w-[22px] shrink-0"
+                />
+                {option}
+              </label>
+            ))}
+          </div>
+          {examSelection.selected.includes('その他') ? (
+            <input
+              className={`${fieldClass} mt-3 w-full`}
+              value={examSelection.other}
+              onChange={(e) => onChange({
+                ...session,
+                examSelection: { ...examSelection, other: e.target.value },
+              })}
+              placeholder="その他の検査内容"
+            />
+          ) : null}
+        </section>
+      ) : null}
 
       {notice ? <p className="text-[13px] text-nc-ink mb-3">{notice}</p> : null}
 
       <button
         type="button"
         onClick={onNext}
-        className="bg-nc-green text-nc-cream px-6 py-3 rounded-[8px] text-[15px]"
+        disabled={!hasDocument}
+        className="mt-2 bg-nc-green text-nc-cream px-6 py-3 rounded-[8px] text-[15px] disabled:cursor-not-allowed disabled:opacity-45"
       >
         確認画面へ
       </button>

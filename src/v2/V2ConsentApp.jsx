@@ -34,9 +34,11 @@ export default function V2ConsentApp() {
   const [notice, setNotice] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const documentId = session.selectedDocumentIds[0] || 'ippan_shujutsu';
-  const documentDef = useMemo(() => getDocument(documentId), [documentId]);
-  const documentSession = ensureDocumentSession(session, documentId);
+  const documentId = session.selectedDocumentIds[0] || null;
+  const documentDef = useMemo(() => (documentId ? getDocument(documentId) : null), [documentId]);
+  const documentSession = documentId
+    ? ensureDocumentSession(session, documentId)
+    : null;
   const slides = useMemo(() => visibleSlides(documentDef, session), [documentDef, session]);
 
   const updateDocumentSession = (nextDocumentSession) => {
@@ -52,7 +54,7 @@ export default function V2ConsentApp() {
       setNotice('飼い主氏名・動物の名前・日付を入力してください。');
       return;
     }
-    if (!session.selectedDocumentIds.length) {
+    if (!session.selectedDocumentIds.length || !documentDef) {
       setNotice('書類を選択してください。');
       return;
     }
@@ -60,6 +62,12 @@ export default function V2ConsentApp() {
       const selection = session.procedureSelections[documentId];
       if (!selection?.selected?.length) {
         setNotice('手術・処置の内容を選択してください。');
+        return;
+      }
+    }
+    if (documentDef.examOptions?.length) {
+      if (!session.examSelection?.selected?.length) {
+        setNotice('実施検査を選択してください。');
         return;
       }
     }
@@ -72,6 +80,7 @@ export default function V2ConsentApp() {
   };
 
   const handleToggleCheck = (slideId, checked) => {
+    if (!documentSession) return;
     const timestamps = { ...(documentSession.slideCheckTimestamps || {}) };
     if (checked) timestamps[slideId] = new Date().toISOString();
     else delete timestamps[slideId];
@@ -79,6 +88,7 @@ export default function V2ConsentApp() {
   };
 
   const handleSlideNext = () => {
+    if (!documentDef || !documentSession) return;
     if (slideIndex < slides.length - 1) {
       setNotice('');
       setSlideIndex(slideIndex + 1);
@@ -102,6 +112,7 @@ export default function V2ConsentApp() {
   };
 
   const handleSaveAndPrint = async () => {
+    if (!documentDef || !documentSession) return;
     if (!allSlidesChecked(documentDef, documentSession, session) || !documentSession.signatureDataUrl) {
       setNotice('署名とスライド確認がそろっていません。');
       return;
@@ -153,6 +164,7 @@ export default function V2ConsentApp() {
         phone: session.phone,
         emergencyContact: session.emergencyContact,
         procedureSelection: session.procedureSelections[documentDef.id] || null,
+        examSelection: documentDef.examOptions ? (session.examSelection || null) : null,
         requiresFasting: Boolean(session.requiresFasting),
         slideVersion: documentDef.slideVersion,
         slideCheckTimestamps: documentSession.slideCheckTimestamps,
@@ -187,7 +199,7 @@ export default function V2ConsentApp() {
     }
   };
 
-  if (step === 'start') {
+  if (step === 'start' || !documentDef || !documentSession) {
     return (
       <StartScreen
         session={session}

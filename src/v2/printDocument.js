@@ -1,5 +1,5 @@
 import { displayOwnerName, displayPetName } from '../displayNames';
-import { formatCheckedAt, visibleContentItems, visibleSlides } from './session';
+import { formatCheckedAt, formatSelectionLabel, visibleContentItems, visibleSlides } from './session';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -7,14 +7,6 @@ function escapeHtml(value) {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
-}
-
-function procedureLabel(selection) {
-  if (!selection) return '—';
-  const selected = selection.selected || [];
-  const other = (selection.other || '').trim();
-  const labels = selected.map((item) => (item === 'その他' && other ? `その他（${other}）` : item));
-  return labels.length ? labels.join('、') : '—';
 }
 
 function itemText(text, foodPortions) {
@@ -79,7 +71,15 @@ export function buildPrintHtml({
     飼い主：${escapeHtml(displayOwnerName(session.ownerName))}<br />
     動物：${escapeHtml(displayPetName(session.petName))}<br />
     日付：${escapeHtml(session.date)}　来院時間：${escapeHtml(session.visitTime || '—')}<br />
-    内容：${escapeHtml(procedureLabel(session.procedureSelections?.[documentDef.id]))}<br />
+    ${documentDef.procedureOptions?.length
+      ? `手術・処置：${escapeHtml(formatSelectionLabel(session.procedureSelections?.[documentDef.id]))}<br />`
+      : ''}
+    ${documentDef.examOptions?.length
+      ? `実施検査：${escapeHtml(formatSelectionLabel(session.examSelection))}<br />`
+      : ''}
+    ${documentDef.hasFastingOption
+      ? `絶食：${session.requiresFasting ? 'あり' : 'なし'}<br />`
+      : ''}
     電話：${escapeHtml(session.phone || '—')}　緊急連絡先：${escapeHtml(session.emergencyContact || '—')}
   </div>
   <div class="notice">${escapeHtml(documentDef.fullText.noticeBar)}</div>

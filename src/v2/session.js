@@ -7,10 +7,9 @@ export function createInitialSession() {
     foodPortions: '',
     phone: '',
     emergencyContact: '',
-    selectedDocumentIds: ['ippan_shujutsu'],
-    procedureSelections: {
-      ippan_shujutsu: { selected: [], other: '' },
-    },
+    selectedDocumentIds: [],
+    procedureSelections: {},
+    examSelection: { selected: [], other: '' },
     requiresFasting: false,
     documentSessions: [],
   };
@@ -34,6 +33,18 @@ export function ensureDocumentSession(session, documentId) {
   const existing = (session.documentSessions || []).find((item) => item.documentId === documentId);
   if (existing) return existing;
   return createDocumentSession(documentId);
+}
+
+export function emptySelection() {
+  return { selected: [], other: '' };
+}
+
+export function formatSelectionLabel(selection) {
+  if (!selection) return '—';
+  const selected = selection.selected || [];
+  const other = (selection.other || '').trim();
+  const labels = selected.map((item) => (item === 'その他' && other ? `その他（${other}）` : item));
+  return labels.length ? labels.join('、') : '—';
 }
 
 export function isConditionMet(condition, session) {

@@ -1,0 +1,151 @@
+From ec57930d1f0b01af3d69408c482122d5effe1eac Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 23 Aug 2026 02:48:27 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20iPad=20Safari=E3=81=A7=E4=BF=9D=E5=AD=98?=
+ =?UTF-8?q?=E3=81=AF=E6=88=90=E5=8A=9F=E3=81=99=E3=82=8B=E3=81=AE=E3=81=AB?=
+ =?UTF-8?q?=E5=8D=B0=E5=88=B7=E3=82=A6=E3=82=A3=E3=83=B3=E3=83=89=E3=82=A6?=
+ =?UTF-8?q?=E3=81=8C=E9=96=8B=E3=81=8B=E3=81=AA=E3=81=84=E4=B8=8D=E5=85=B7?=
+ =?UTF-8?q?=E5=90=88=E3=82=92=E4=BF=AE=E6=AD=A3?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+保存自体は成功する（Firebaseにデータは残る）のに、印刷用ウィンドウが
+開かれないという報告を受けて調査。
+
+原因は iOS/iPadOS Safari のポップアップブロック挙動だった。
+window.open() は、クリックのイベントハンドラの中で「同期的に」呼ばれない
+限り、ユーザー操作によるものとみなされず黙ってブロックされる（警告バナー
+も出ない）。このアプリは PDF 生成（html2canvas によるレンダリング）や
+Firebase への保存という複数の非同期処理（await）を経てから
+window.open(pdfUrl, '_blank') を呼んでいたため、保存ボタンのクリックから
+時間が経ちすぎており、Safari にブロックされていた。
+
+対策として、window.open('', '_blank') によるウィンドウのオープン自体は
+ボタンクリック直後・非同期処理の前に同期的に行うよう変更し、PDFの
+URLが用意できた後は既に開いているウィンドウに
+printWindow.location.href で差し込むだけにした。
+
+- ConsentForm: openPrintDialog を showPrintWindow に変更し、ウィンドウを
+  開くタイミングと URL を差し込むタイミングを分離
+- ConsentForm: handleGenerateAndSave の冒頭（非同期処理より前）で
+  window.open('', '_blank') を実行
+- ConsentForm: 保存自体が失敗した場合は、開いたままの空ウィンドウを
+  閉じるようにした
+- e2e: window.open のモックを新しい実装（location.href への代入で
+  URLを渡す方式）に合わせて更新
+
+このサンドボックス環境には実機の Safari／WebKit が無いため、この修正は
+「window.open はクリックハンドラ内で同期的に呼ぶ」という、ポップアップ
+ブロック対策として広く使われている標準的な手法に基づく。全12書類の
+E2Eスモークテストは通過を確認済みだが、実機の iPad Safari での動作確認を
+お願いしたい。
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014h7obMSgjJTF54skC18bR3
+---
+ e2e/entry.jsx       | 26 +++++++++++++++++++++++++-
+ src/ConsentForm.jsx | 32 ++++++++++++++++++++++++--------
+ 2 files changed, 49 insertions(+), 9 deletions(-)
+
+diff --git a/e2e/entry.jsx b/e2e/entry.jsx
+index 690b318..79f2d6a 100644
+--- a/e2e/entry.jsx
++++ b/e2e/entry.jsx
+@@ -4,5 +4,29 @@ import { createRoot } from 'react-dom/client';
+ import ConsentForm from '../src/ConsentForm.jsx';
+ window.__calls = [];
+ window.__opened = [];
+-window.open = (url) => { window.__opened.push(url); return { print(){ window.__calls.push({fn:'print'}); }, addEventListener(){} }; };
++// window.open('', '_blank') で先に空のウィンドウを開き、後から
++// printWindow.location.href = pdfUrl で URL を差し込む実装をモックする。
++window.open = () => {
++  const win = {
++    closed: false,
++    print() {
++      window.__calls.push({ fn: 'print' });
++    },
++    addEventListener() {},
++    close() {
++      win.closed = true;
++    },
++  };
++  let href = '';
++  Object.defineProperty(win, 'location', {
++    get() {
++      return { href };
++    },
++    set(value) {
++      href = typeof value === 'string' ? value : value.href;
++      window.__opened.push(href);
++    },
++  });
++  return win;
++};
+ createRoot(document.getElementById('root')).render(<ConsentForm />);
+diff --git a/src/ConsentForm.jsx b/src/ConsentForm.jsx
+index 50ab538..5a2db05 100644
+--- a/src/ConsentForm.jsx
++++ b/src/ConsentForm.jsx
+@@ -290,12 +290,21 @@ export default function ConsentForm() {
+     setFormData({ ...formData, examOtherChecked: true });
+   };
+ 
+-  // 印刷用ウィンドウを開けたら true を返す。
+-  // iPad Safari ではポップアップがブロックされることがあるため、
+-  // 呼び出し側で結果に応じたメッセージを出し分ける。
+-  const openPrintDialog = (pdfUrl) => {
+-    const printWindow = window.open(pdfUrl, '_blank');
+-    if (!printWindow) return false;
++  // すでに開いてある（空の）ウィンドウに PDF の URL を差し込んで印刷を試みる。
++  // 成功したら true を返す。
++  //
++  // iOS/iPadOS の Safari は、window.open() が「クリックのイベントハンドラの中で
++  // 同期的に」呼ばれていない場合、ユーザー操作によるものとみなさずポップアップを
++  // 黙ってブロックする（警告バナーも出ない）。このアプリでは PDF 生成や
++  // Firebase への保存という複数の非同期処理（await）を経てから印刷ウィンドウを
++  // 開いていたため、保存自体は成功しても印刷ウィンドウが開かれない不具合が
++  // 起きていた。
++  // 対策として、ウィンドウを開く処理そのものはボタンクリック直後・非同期処理の
++  // 前に同期的に行い（handleGenerateAndSave 冒頭の window.open('', '_blank')）、
++  // ここでは PDF が用意できた後にその URL を差し込むだけにする。
++  const showPrintWindow = (printWindow, pdfUrl) => {
++    if (!printWindow || printWindow.closed) return false;
++    printWindow.location.href = pdfUrl;
+     const tryPrint = () => {
+       try {
+         printWindow.print();
+@@ -328,6 +337,11 @@ export default function ConsentForm() {
+     setIsSaving(true);
+     setSaveNotice('');
+ 
++    // クリック直後・非同期処理より前に同期的にウィンドウを開いておく（上の説明参照）。
++    // これがボタンクリックというユーザー操作に紐づく唯一のタイミングなので、
++    // ここを逃すと iOS Safari にブロックされる。
++    const printWindow = window.open('', '_blank');
++
+     try {
+       if (needsSignature) {
+         const dataUrl = getSignatureDataUrl(sigCanvas.current);
+@@ -384,14 +398,16 @@ export default function ConsentForm() {
+           : {}),
+       });
+ 
+-      const printOpened = openPrintDialog(downloadURL);
++      const printOpened = showPrintWindow(printWindow, downloadURL);
+       handleBackToSelect();
+       setSaveNotice(
+         printOpened
+           ? '保存しました'
+-          : '保存しました。印刷用のウィンドウを開けませんでした（ポップアップを許可してください）。',
++          : '保存しました。印刷用のウィンドウを開けませんでした（Safariの「ポップアップブロック」をこのサイトで許可してください）。',
+       );
+     } catch (error) {
++      // 空のまま開いたウィンドウが残らないよう、失敗時は閉じる。
++      if (printWindow && !printWindow.closed) printWindow.close();
+       console.error('保存エラーの詳細:', error);
+       setSaveNotice(`保存に失敗しました。${error.message}`);
+       setCapturedSignature(null);
+-- 
+2.43.0
+

@@ -1,0 +1,122 @@
+From c56ffa08e81cdc0afb90165b6135d09d737bf68e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 23 Aug 2026 03:08:25 +0000
+Subject: [PATCH] =?UTF-8?q?feat:=20=E5=B1=A5=E6=AD=B4=E6=A4=9C=E7=B4=A2?=
+ =?UTF-8?q?=E3=82=92=E3=82=AB=E3=83=BC=E3=83=89=E8=A1=A8=E7=A4=BA=E3=81=8B?=
+ =?UTF-8?q?=E3=82=89=E3=82=B7=E3=83=B3=E3=83=97=E3=83=AB=E3=81=AA1?=
+ =?UTF-8?q?=E8=A1=8C=E3=83=86=E3=82=AD=E3=82=B9=E3=83=88=E3=83=AA=E3=82=B9?=
+ =?UTF-8?q?=E3=83=88=E3=81=AB=E5=A4=89=E6=9B=B4?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+要望に合わせて履歴検索画面（承諾書の検索・確認）を変更。
+
+- カード形式（色付きボタン・グリッド）をやめ、1件を1行で表示する
+  プレーンテキストのリストに変更。ラベル文字（「カルテ番号:」
+  「氏名:」等）は付けず、値だけを表示
+- 日付 → カルテ番号 → 氏名 → 動物の名前 の順で並べ、日付・カルテ番号・
+  氏名の開始位置は全行で揃うよう固定幅の列にした（それ以降の動物の
+  名前・書類名・PDFリンクは位置を揃えない）
+- 常に日付の降順で並ぶように修正。氏名で絞り込んだ場合、Firestore の
+  制約上クエリ自体は ownerName 順でしか取得できないため、取得後に
+  クライアント側で createdAt の降順に並べ替えるようにした
+- 書類の種類・カテゴリの表示と、PDFを開くリンクはそのまま残した
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014h7obMSgjJTF54skC18bR3
+---
+ src/ConsentSearch.jsx | 63 +++++++++++++++++++------------------------
+ 1 file changed, 27 insertions(+), 36 deletions(-)
+
+diff --git a/src/ConsentSearch.jsx b/src/ConsentSearch.jsx
+index aa6c927..9fbd5ce 100644
+--- a/src/ConsentSearch.jsx
++++ b/src/ConsentSearch.jsx
+@@ -38,6 +38,9 @@ export default function ConsentSearch({ onBackToForm }) {
+         ...doc.data(),
+         createdAt: doc.data().createdAt?.toDate() || new Date(),
+       }));
++      // 氏名で絞り込んだ場合、Firestore の制約で ownerName 順にしか
++      // 取得できないため、常に日付の降順になるようここで並べ替える。
++      data.sort((a, b) => b.createdAt - a.createdAt);
+       setConsents(data);
+     } catch (err) {
+       console.error('Firestore読み込みエラー:', err);
+@@ -112,49 +115,37 @@ export default function ConsentSearch({ onBackToForm }) {
+         )}
+ 
+         {!loading && consents.length > 0 && (
+-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
++          <div className="divide-y divide-nc-line">
+             {consents.map((consent) => {
+               const formType = getFormType(consent.formTypeId);
+               const title = formType?.label ?? consent.formTypeId ?? consent.type ?? '（種類不明）';
+               const categoryLabel = getCategoryLabel(consent.category);
++              const docLabel = title + (consent.category ? `（${categoryLabel}）` : '');
++              // ラベル文字（「カルテ番号:」「氏名:」等）は付けない。
++              // カルテ番号・氏名の開始位置だけは全行で揃うよう、
++              // 日付とカルテ番号を固定幅の列にしている。それより後ろ
++              // （動物の名前・書類名・PDFリンク）は単純に横へ並べるだけで、
++              // 位置は揃えない。
+               return (
+-                <div
++                <p
+                   key={consent.id}
+-                  className="bg-nc-cream p-4 rounded-[8px] nc-hairline flex flex-col justify-between"
++                  className="py-1.5 text-[13px] text-nc-ink whitespace-nowrap overflow-x-auto flex items-baseline"
+                 >
+-                  <div className="mb-4 pb-3 border-b-[0.5px] border-nc-line">
+-                    <h2 className="text-[16px] font-medium text-nc-ink">{title}</h2>
+-                    {consent.category && (
+-                      <p className="text-[12px] text-nc-ink-soft mt-1">{categoryLabel}</p>
+-                    )}
+-                  </div>
+-
+-                  <div className="space-y-1.5 text-[13px] text-nc-ink mb-4">
+-                    <p>
+-                      <span className="text-nc-ink-soft">飼い主</span> {displayOwnerName(consent.ownerName)}
+-                    </p>
+-                    <p>
+-                      <span className="text-nc-ink-soft">動物の名前</span> {displayPetName(consent.petName)}
+-                    </p>
+-                    {consent.karteNumber ? (
+-                      <p>
+-                        <span className="text-nc-ink-soft">カルテ番号</span> {consent.karteNumber}
+-                      </p>
+-                    ) : null}
+-                    <p>
+-                      <span className="text-nc-ink-soft">日付</span> {consent.date}
+-                    </p>
+-                  </div>
+-
+-                  <a
+-                    href={consent.pdfUrl}
+-                    target="_blank"
+-                    rel="noopener noreferrer"
+-                    className="text-center bg-nc-green text-nc-cream px-4 py-2.5 rounded-[8px] text-[14px]"
+-                  >
+-                    PDFを開く
+-                  </a>
+-                </div>
++                  <span className="inline-block w-[92px] shrink-0">{consent.date}</span>
++                  <span className="inline-block w-[64px] shrink-0">{consent.karteNumber || ''}</span>
++                  <span>
++                    {displayOwnerName(consent.ownerName)}　{displayPetName(consent.petName)}　{docLabel}
++                    {'　'}
++                    <a
++                      href={consent.pdfUrl}
++                      target="_blank"
++                      rel="noopener noreferrer"
++                      className="text-nc-green underline"
++                    >
++                      PDFを開く
++                    </a>
++                  </span>
++                </p>
+               );
+             })}
+           </div>
+-- 
+2.43.0
+
